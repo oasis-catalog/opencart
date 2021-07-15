@@ -34,5 +34,7 @@ $_['entry_api_key'] = 'API ключ';
 $_['button_import'] = 'Импорт';
 
 // Error
+$_['error_api_access'] = 'Предупреждение! У Вас нет API ключа, получите на сайте <a href="https://oasiscatalog.com/" target="_blank">oasiscatalog.com</a> API ключ и укажите его в настройках модуля!';
+$_['error_api_key'] = 'Предупреждение! Ваш API ключ не действительный, получите новый API ключ на сайте <a href="https://oasiscatalog.com/" target="_blank">oasiscatalog.com</a> и укажите его в настройках модуля!';
 $_['error_permission'] = 'Предупреждение! У Вас нет прав для управления этим модулем!';
 $_['text_mail_to'] = 'По вопросам работы модуля пишите на нашем <a href="https://forum.oasiscatalog.com/" target="_blank">форуме</a>';

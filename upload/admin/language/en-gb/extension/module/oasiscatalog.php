@@ -34,5 +34,7 @@ $_['entry_api_key'] = 'API key';
 $_['button_import'] = 'Import';
 
 // Error
+$_['error_api_access'] = 'A warning! You do not have an API key, get the API key on the <a href="https://oasiscatalog.com/" target="_blank">website oasiscatalog.com</a> and specify it in the module settings!';
+$_['error_api_key'] = 'A warning! Your API key is not valid, get a new API key on the website <a href="https://oasiscatalog.com/" target="_blank">oasiscatalog.com</a> and specify it in the module settings!';
 $_['error_permission'] = 'Warning: You do not have permission to modify!';
 $_['text_mail_to'] = 'For questions about the module, write on our <a href="https://forum.oasiscatalog.com/" target="_blank">forum</a>';

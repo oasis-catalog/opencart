@@ -29,7 +29,9 @@
                         <div class="tab-content">
                             <ul class="nav nav-tabs" role="tablist">
                                 <li class="active"><a href="#tab-option" data-toggle="tab">{{ tab_option }}</a></li>
+                                {% if api_key_status %}
                                 <li><a href="#tab-import" data-toggle="tab">{{ tab_import }}</a></li>
+                                {% endif %}
                             </ul>
                             <div id="tab-option" class="tab-pane active">
                                 <div class="form-group">
@@ -38,17 +40,17 @@
                                         <div class="btn-group" data-toggle="buttons">
                                             {% if status %}
                                                 <label class="btn btn-default active">
-                                                    <input type="radio" name="status" value="1" autocomplete="off" checked="checked"/> {{ text_enabled }}
+                                                    <input type="radio" name="oasiscatalog_status" value="1" autocomplete="off" checked="checked"/> {{ text_enabled }}
                                                 </label>
                                                 <label class="btn btn-default">
-                                                    <input type="radio" name="status" value="0" autocomplete="off"/> {{ text_disabled }}
+                                                    <input type="radio" name="oasiscatalog_status" value="0" autocomplete="off"/> {{ text_disabled }}
                                                 </label>
                                             {% else %}
                                                 <label class="btn btn-default">
-                                                    <input type="radio" name="status" value="1" autocomplete="off"/> {{ text_enabled }}
+                                                    <input type="radio" name="oasiscatalog_status" value="1" autocomplete="off"/> {{ text_enabled }}
                                                 </label>
                                                 <label class="btn btn-default active">
-                                                    <input type="radio" name="status" value="0" autocomplete="off" checked="checked"/> {{ text_disabled }}
+                                                    <input type="radio" name="oasiscatalog_status" value="0" autocomplete="off" checked="checked"/> {{ text_disabled }}
                                                 </label>
                                             {% endif %}
                                         </div>
@@ -57,19 +59,43 @@
                                 <div class="form-group">
                                     <label class="col-sm-3 control-label" for="input-api-key">{{ entry_api_key }}</label>
                                     <div class="col-sm-9">
-                                        <input type="text" name="api_key" value="{{ api_key }}" class="form-control" id="input-api-key" width="100%">
+                                        <input type="text" name="oasiscatalog_api_key" value="{{ api_key }}" class="form-control" id="input-api-key" width="100%">
                                     </div>
                                 </div>
                             </div>
+                            {% if api_key_status %}
                             <div id="tab-import" class="tab-pane">
                                 <div class="form-group">
-                                    <label class="col-sm-3 control-label" for="input-data-import">{{ tab_import }}</label>
-                                    <div class="col-sm-9">
-                                        <button type="button" class="btn btn-primary" id="button-start-import" data-loading-text="{{ text_loading }}" data-complete-text="{{ text_complete }}"><i
-                                                    class="fa fa-copy"></i> {{ button_import }}</button>
+                                    <div class="row">
+                                        <div class="col-sm-6">
+                                            <div class="form-group">
+                                                <label class="col-sm-6 control-label" for="input-currency">{{ text_currency }}</label>
+                                                <div class="col-sm-6">
+                                                    <select name="currency" id="input-width" class="form-control">
+                                                        {% for key, currency in currencies %}
+                                                            {% if key == 643 %}
+                                                                <option value="{{ key }}" selected="selected">{{ currency }}</option>
+                                                            {% else %}
+                                                                <option value="{{ key }}">{{ currency }}</option>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-12">
+                                            <div class="form-group">
+                                                <label class="col-sm-3 control-label" for="input-data-import">{{ tab_import }}</label>
+                                                <div class="col-sm-9">
+                                                    <button type="button" class="btn btn-primary" id="button-start-import" data-loading-text="{{ text_loading }}" data-complete-text="{{ text_complete }}"><i
+                                                                class="fa fa-copy"></i> {{ button_import }}</button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            {% endif %}
                         </div>
                     </div>
                 </form>
