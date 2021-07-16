@@ -9,6 +9,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     private const ROUTE = 'extension/module/oasiscatalog';
     private const API_URL = 'https://api.oasiscatalog.com/v4/';
     private const API_CURRENCYES = 'currencies';
+    private const API_CATEGORIES = 'categories';
 
     /**
      * @throws Exception
@@ -63,17 +64,37 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $data['api_key_status'] = false;
 
         if ($data['api_key']) {
-            $currencies = $this->getCurrencies(['key' => $data['api_key']]);
+            $args = [
+                'key' => $data['api_key'],
+            ];
+
+            $currencies = $this->getCurrencies($args);
             $data['api_key_status'] = $currencies ? true : false;
 
             if ($data['api_key_status']) {
                 $data['currencies'] = [];
 
                 foreach ($currencies as $currency) {
-                    $data['currencies'][$currency->id] = $currency->full_name;
+                    $data['currencies'][$currency->code] = $currency->full_name;
                 }
 
-                // next
+                $args['format'] = 'json';
+                $args['fields'] = 'id,parent_id,root,level,slug,name,path';
+
+                $categories = $this->getCategories($args);
+                $dl = '&nbsp;&gt;&nbsp;';
+                $result = [];
+
+                foreach ($categories as $item) {
+                    $parent = isset($result[$item->parent_id]) ? $result[$item->parent_id] . $dl : '';
+                    $result[$item->id] = $parent . $item->name;
+                }
+
+                $data['categories'] = $result;
+
+                unset($result, $item, $parent, $dl);
+
+                //next
 
             } else {
                 $data['error_warning'] = $this->language->get('error_api_key');
@@ -91,12 +112,70 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
     public function getTestData()
     {
+        $test_data = [
+            0 => (object) [
+                'id' => 1906,
+                'parent_id' => 0,
+                'root' => 1906,
+                'level' => 1,
+                'slug' => 'vip',
+                'name' => 'VIP',
+                'path' => 'vip',
+            ],
+            1 => (object) [
+                'id' => 2016,
+                'parent_id' => 1906,
+                'root' => 1906,
+                'level' => 2,
+                'slug' => 'ofisnie-aksessuari',
+                'name' => 'Офисные аксессуары',
+                'path' => 'vip/ofisnie-aksessuari',
+            ],
+            2 => (object) [
+                'id' => 2026,
+                'parent_id' => 2016,
+                'root' => 1906,
+                'level' => 3,
+                'slug' => 'podarochnie-nabori',
+                'name' => 'Подарочные наборы',
+                'path' => 'vip/ofisnie-aksessuari/podarochnie-nabori',
+            ],
+            3 => (object) [
+                'id' => 2222,
+                'parent_id' => 2026,
+                'root' => 1906,
+                'level' => 4,
+                'slug' => 'podarochnie-nabori321354',
+                'name' => 'Подарочные наборы321654',
+                'path' => 'vip/ofisnie-aksessuari/podarochnie-nabori321654',
+            ],
+            4 => (object) [
+                'id' => 2020,
+                'parent_id' => 2016,
+                'root' => 1906,
+                'level' => 3,
+                'slug' => 'bloknoti',
+                'name' => 'Блокноты',
+                'path' => 'vip/ofisnie-aksessuari/bloknoti',
+            ],
+            5 => (object) [
+                'id' => 2030,
+                'parent_id' => 1906,
+                'root' => 1906,
+                'level' => 2,
+                'slug' => 'ofisnie-aksessuari222',
+                'name' => 'Офисные аксессуары1222',
+                'path' => 'vip/ofisnie-aksessuari222',
+            ],
+        ];
+        //d($this->sortArr($test_data));
+
         $json = [];
 
         $this->load->language(self::ROUTE);
         $this->load->model('setting/setting');
 
-        $fields = [
+        $args = [
             'key' => $this->config->get('oasiscatalog_api_key'),
             'currency' => 'rub',
             'format' => 'json',
@@ -107,37 +186,54 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         $type = 'products';
 
-        $data_query = $this->curl_query($type, $fields);
+        //$data_query = $this->curl_query($type, $args);
 
         if ($this->request->server['REQUEST_METHOD'] == 'POST') {
-
-            $json['api_key'] = $fields['key'];
-            $json['success'] = 'успешно';
-            $json['produts'] = $data_query;
+            $json['success'] = $this->request->post['currency'];
         }
 
         $this->response->addHeader('Content-Type: application/json');
         $this->response->setOutput(json_encode($json));
     }
 
+    public function sortArr ($data = []) {
+        $result = [];
+
+        foreach ($data as $item) {
+            $parent = isset($result[$item->parent_id]) ? $result[$item->parent_id] . ' > ' : '';
+            $result[$item->id] = $parent . $item->name;
+        }
+
+        return$result;
+    }
+
     /**
-     * @param array $fields
+     * @param array $args
      * @return bool|mixed
      */
-    public function getCurrencies($fields = [])
+    public function getCategories($args = [])
     {
-        return $this->curl_query(self::API_CURRENCYES, $fields);
+        return $this->curl_query(self::API_CATEGORIES, $args);
+    }
+
+    /**
+     * @param array $args
+     * @return bool|mixed
+     */
+    public function getCurrencies($args = [])
+    {
+        return $this->curl_query(self::API_CURRENCYES, $args);
     }
 
     /**
      * @param       $type
-     * @param array $fields
+     * @param array $args
      * @return bool|mixed
      */
-    public function curl_query($type, $fields = [])
+    public function curl_query($type, $args = [])
     {
         $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, self::API_URL . $type . '?' . http_build_query($fields));
+        curl_setopt($ch, CURLOPT_URL, self::API_URL . $type . '?' . http_build_query($args));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $result = json_decode(curl_exec($ch));
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);

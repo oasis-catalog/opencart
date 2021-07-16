@@ -73,13 +73,35 @@
                                                 <div class="col-sm-6">
                                                     <select name="currency" id="input-width" class="form-control">
                                                         {% for key, currency in currencies %}
-                                                            {% if key == 643 %}
+                                                            {% if key == 'rub' %}
                                                                 <option value="{{ key }}" selected="selected">{{ currency }}</option>
                                                             {% else %}
                                                                 <option value="{{ key }}">{{ currency }}</option>
                                                             {% endif %}
                                                         {% endfor %}
                                                     </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <div class="form-group">
+                                                <label class="col-sm-12 control-label" style="text-align: left;" for="input-currency">{{ text_select_categories }}</label>
+                                                <div class="col-sm-12">
+                                                    <div class="well well-sm" style="min-height: 150px;max-height: 500px;overflow: auto;">
+                                                        <table class="table table-striped">
+                                                            {% for key, category in categories %}
+                                                            <tr>
+                                                                <td class="checkbox">
+                                                                    <label>
+                                                                        <input type="checkbox" name="category[]" value="{{ key }}" />
+                                                                        {{ category }}
+                                                                    </label>
+                                                                </td>
+                                                            </tr>
+                                                            {% endfor %}
+                                                        </table>
+                                                    </div>
+                                                    <a onclick="$(this).parent().find(':checkbox').prop('checked', true);">{{ text_select_all }}</a> / <a onclick="$(this).parent().find(':checkbox').prop('checked', false);">{{ text_unselect_all }}</a>
                                                 </div>
                                             </div>
                                         </div>
@@ -120,7 +142,7 @@
             var $button = $(this).button('loading');
 
             $.post(
-                'index.php?route=extension/module/oasiscatalog/getTestData&user_token={{ user_token }}', function (response) {
+                'index.php?route=extension/module/oasiscatalog/getTestData&user_token={{ user_token }}', $('[name="currency"]').serialize(), function (response) {
                     if (response['error']) {
                         $button.button('reset');
 
