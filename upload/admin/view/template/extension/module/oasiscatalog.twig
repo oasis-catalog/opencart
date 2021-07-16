@@ -30,7 +30,7 @@
                             <ul class="nav nav-tabs" role="tablist">
                                 <li class="active"><a href="#tab-option" data-toggle="tab">{{ tab_option }}</a></li>
                                 {% if api_key_status %}
-                                <li><a href="#tab-import" data-toggle="tab">{{ tab_import }}</a></li>
+                                    <li><a href="#tab-import" data-toggle="tab">{{ tab_import }}</a></li>
                                 {% endif %}
                             </ul>
                             <div id="tab-option" class="tab-pane active">
@@ -64,67 +64,103 @@
                                 </div>
                             </div>
                             {% if api_key_status %}
-                            <div id="tab-import" class="tab-pane">
-                                <div class="form-group">
-                                    <div class="row">
-                                        <div class="col-sm-6">
-                                            <div class="form-group">
-                                                <label class="col-sm-6 control-label" for="input-currency">{{ text_currency }}</label>
-                                                <div class="col-sm-6">
-                                                    <select name="currency" id="input-width" class="form-control">
-                                                        {% for key, currency in currencies %}
-                                                            {% if key == 'rub' %}
-                                                                <option value="{{ key }}" selected="selected">{{ currency }}</option>
-                                                            {% else %}
-                                                                <option value="{{ key }}">{{ currency }}</option>
-                                                            {% endif %}
-                                                        {% endfor %}
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="form-group">
-                                                <label class="col-sm-6 control-label" for="input-no-vat">{{ text_no_vat }}</label>
-                                                <div class="col-sm-6">
-                                                    <label class="control-label">
-                                                        <input type="checkbox" name="no-vat" value="1" id="input-no-vat" />
-                                                        &nbsp; </label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-sm-6">
-                                            <div class="form-group">
-                                                <label class="col-sm-12 control-label" style="text-align: left;" for="input-category">{{ text_select_categories }}</label>
-                                                <div class="col-sm-12">
-                                                    <div class="well well-sm" style="min-height: 150px;max-height: 500px;overflow: auto;">
-                                                        <table class="table table-striped">
-                                                            {% for key, category in categories %}
-                                                            <tr>
-                                                                <td class="checkbox">
-                                                                    <label>
-                                                                        <input type="checkbox" name="category[]" value="{{ key }}" />
-                                                                        {{ category }}
-                                                                    </label>
-                                                                </td>
-                                                            </tr>
-                                                            {% endfor %}
-                                                        </table>
+                                <div id="tab-import" class="tab-pane">
+                                    <div class="form-group">
+                                        <div class="row">
+                                            <div class="col-sm-6">
+                                                <div class="form-group">
+                                                    <div class="col-sm-12">
+                                                        <label class="col-sm-6 control-label" for="input-currency">{{ text_currency }}</label>
+                                                        <div class="col-sm-6">
+                                                            <select name="currency" id="input-width" class="form-control">
+                                                                {% for key, currency in currencies %}
+                                                                    {% if key == 'rub' %}
+                                                                        <option value="{{ key }}" selected="selected">{{ currency }}</option>
+                                                                    {% else %}
+                                                                        <option value="{{ key }}">{{ currency }}</option>
+                                                                    {% endif %}
+                                                                {% endfor %}
+                                                            </select>
+                                                        </div>
                                                     </div>
-                                                    <a onclick="$(this).parent().find(':checkbox').prop('checked', true);">{{ text_select_all }}</a> / <a onclick="$(this).parent().find(':checkbox').prop('checked', false);">{{ text_unselect_all }}</a>
+                                                </div>
+                                                <div class="form-group">
+                                                    <div class="col-sm-12">
+                                                        <label class="col-sm-6 control-label" for="input-no-vat">{{ text_no_vat }}</label>
+                                                        <div class="col-sm-6">
+                                                            <label class="control-label">
+                                                                <input type="checkbox" name="no-vat" value="1" id="input-no-vat"/>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <div class="col-sm-12">
+                                                        <label class="col-sm-6 control-label" for="input-not-on-order">{{ text_not_on_order }}</label>
+                                                        <div class="col-sm-6">
+                                                            <label class="control-label">
+                                                                <input type="checkbox" name="not-on-order" value="1" id="input-not-on-order"/>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <div class="col-sm-12">
+                                                        <label class="col-sm-6 control-label" for="input-price">{{ text_price }}</label>
+                                                        <div class="col-sm-6">
+                                                            <div class="row">
+                                                                <div class="col-sm-1">
+                                                                    <label class="col-sm-6 control-label" for="input-price-from">{{ text_price_from }}</label>
+                                                                </div>
+                                                                <div class="col-sm-5">
+                                                                    <input type="text" name="price-from" value="" placeholder="{{ text_price_from }}" id="input-price-from" class="form-control">
+                                                                </div>
+                                                                <div class="col-sm-1">
+                                                                    <label class="col-sm-6 control-label" for="input-price-to">{{ text_price_to }}</label>
+                                                                </div>
+                                                                <div class="col-sm-5">
+                                                                    <input type="text" name="price-to" value="" placeholder="{{ text_price_to }}" id="input-price-to" class="form-control">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div class="col-sm-12">
-                                            <div class="form-group">
-                                                <label class="col-sm-3 control-label" for="input-data-import">{{ tab_import }}</label>
-                                                <div class="col-sm-9">
-                                                    <button type="button" class="btn btn-primary" id="button-start-import" data-loading-text="{{ text_loading }}" data-complete-text="{{ text_complete }}"><i
-                                                                class="fa fa-copy"></i> {{ button_import }}</button>
+                                            <div class="col-sm-6">
+                                                <div class="form-group">
+                                                    <label class="col-sm-12 control-label" style="text-align: left;" for="input-category">{{ text_select_categories }}</label>
+                                                    <div class="col-sm-12">
+                                                        <div class="well well-sm" style="min-height: 150px;max-height: 500px;overflow: auto;">
+                                                            <table class="table table-striped">
+                                                                {% for key, category in categories %}
+                                                                    <tr>
+                                                                        <td class="checkbox">
+                                                                            <label>
+                                                                                <input type="checkbox" name="category[]" value="{{ key }}"/>
+                                                                                {{ category }}
+                                                                            </label>
+                                                                        </td>
+                                                                    </tr>
+                                                                {% endfor %}
+                                                            </table>
+                                                        </div>
+                                                        <a onclick="$(this).parent().find(':checkbox').prop('checked', true);">{{ text_select_all }}</a> / <a
+                                                                onclick="$(this).parent().find(':checkbox').prop('checked', false);">{{ text_unselect_all }}</a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-sm-12">
+                                                <div class="form-group">
+                                                    <div class="col-sm-9 text-center">
+                                                        <button type="button" class="btn btn-primary" id="button-start-import" data-loading-text="{{ text_loading }}"
+                                                                data-complete-text="{{ text_complete }}"><i
+                                                                    class="fa fa-copy"></i> {{ button_import }}</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
                             {% endif %}
                         </div>
                     </div>
