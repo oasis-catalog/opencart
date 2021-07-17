@@ -72,7 +72,7 @@
                                                     <div class="col-sm-12">
                                                         <label class="col-sm-6 control-label" for="input-currency">{{ text_currency }}</label>
                                                         <div class="col-sm-6">
-                                                            <select name="currency" id="input-width" class="form-control">
+                                                            <select name="currency" id="input-currency" class="form-control col-sm-6">
                                                                 {% for key, currency in currencies %}
                                                                     {% if key == 'rub' %}
                                                                         <option value="{{ key }}" selected="selected">{{ currency }}</option>
@@ -149,6 +149,25 @@
                                                                        onClick="this.checked=!this.isChecked;"
                                                                        name="rating" value="3"/>
                                                                 &nbsp; {{ text_only_discount }}
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <div class="col-sm-12">
+                                                        <div class="col-sm-6"></div>
+                                                        <div class="col-sm-6">
+                                                            <label class="col-sm-12">
+                                                                <input type="checkbox" name="warehouse_moscow" value="1" />
+                                                                {{ text_warehouse_moscow }}
+                                                            </label>
+                                                            <label class="col-sm-12">
+                                                                <input type="checkbox" name="warehouse_europe" value="1" />
+                                                                {{ text_warehouse_europe }}
+                                                            </label>
+                                                            <label class="col-sm-12">
+                                                                <input type="checkbox" name="remote_warehouse" value="1" />
+                                                                {{ text_remote_warehouse }}
                                                             </label>
                                                         </div>
                                                     </div>
