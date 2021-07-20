@@ -24,6 +24,9 @@
                 <h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_edit }}</h3>
             </div>
             <div class="panel-body">
+                <div id="w3" class="active progress-striped progress">
+                    <div class="progress-bar progress-bar-success progress-bar-striped" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0">0%<span class="sr-only">0% Complete</span></div>
+                </div>
                 <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-module" class="form-horizontal">
                     <div role="tabs">
                         <div class="tab-content">
@@ -128,27 +131,18 @@
                                                 <div class="form-group">
                                                     <div class="col-sm-12">
                                                         <div class="col-sm-6"></div>
-                                                        <div class="col-sm-6">
+                                                        <div class="col-sm-6" id="rating-group">
                                                             <label class="col-sm-12">
-                                                                <input type="radio"
-                                                                       onMouseDown="this.isChecked=this.checked;"
-                                                                       onClick="this.checked=!this.isChecked;"
-                                                                       name="rating" value="1"/>
-                                                                &nbsp; {{ text_only_new }}
+                                                                <input type="checkbox" name="rating" value="1" />
+                                                                {{ text_only_new }}
                                                             </label>
                                                             <label class="col-sm-12">
-                                                                <input type="radio"
-                                                                       onMouseDown="this.isChecked=this.checked;"
-                                                                       onClick="this.checked=!this.isChecked;"
-                                                                       name="rating" value="2"/>
-                                                                &nbsp; {{ text_only_hits }}
+                                                                <input type="checkbox" name="rating" value="2" />
+                                                                {{ text_only_hits }}
                                                             </label>
                                                             <label class="col-sm-12">
-                                                                <input type="radio"
-                                                                       onMouseDown="this.isChecked=this.checked;"
-                                                                       onClick="this.checked=!this.isChecked;"
-                                                                       name="rating" value="3"/>
-                                                                &nbsp; {{ text_only_discount }}
+                                                                <input type="checkbox" name="rating" value="3" />
+                                                                {{ text_only_discount }}
                                                             </label>
                                                         </div>
                                                     </div>
@@ -183,7 +177,7 @@
                                                                     <tr>
                                                                         <td class="checkbox" style="padding: 5px;">
                                                                             <label>
-                                                                                <input type="checkbox" name="category[]" value="{{ key }}"/>
+                                                                                <input id="categories" type="checkbox" name="category[]" value="{{ key }}"/>
                                                                                 {{ category }}
                                                                             </label>
                                                                         </td>
@@ -201,6 +195,9 @@
                                                     <div class="col-sm-9 text-center">
                                                         <button type="button" class="btn btn-primary" id="button-start-import" data-loading-text="{{ text_loading }}"
                                                                 data-complete-text="{{ text_complete }}"><i
+                                                                    class="fa fa-copy"></i> {{ button_import }}</button>
+
+                                                        <button type="button" class="btn btn-success" id="start-import"><i
                                                                     class="fa fa-copy"></i> {{ button_import }}</button>
                                                     </div>
                                                 </div>
@@ -252,5 +249,85 @@
                 }, 'json');
         });
     });
+
+    $("#start-import").click(StartImport);
+
+    var count = 0;
+
+    function StartImport(e) {
+        e.preventDefault();
+
+        var currency = $('#input-currency option:selected').val();
+        var no_vat = $('[name="no-vat"]').is(":checked") ? 1 : 0;
+        var not_on_order = $('[name="not-on-order"]').is(":checked") ? 1 : null;
+        var price_from = $('[name="price-from"]').val();
+        var price_to = $('[name="price-to"]').val();
+
+        var rating = null;
+        $('[name="rating"]:checked').each(function(){
+            rating = $(this).val();
+        });
+
+        var warehouse_moscow = $('[name="warehouse_moscow"]').is(":checked") ? 1 : null;
+        var warehouse_europe = $('[name="warehouse_europe"]').is(":checked") ? 1 : null;
+        var remote_warehouse = $('[name="remote_warehouse"]').is(":checked") ? 1 : null;
+
+        var category = [];
+        $('[id="categories"]:checked').each(function() {
+            category.push($(this).val());
+        });
+
+        var y = 1;
+
+        if ( count < y ) {
+            $.ajax({
+                url: 'index.php?route=extension/module/oasiscatalog/import&user_token={{ user_token }}',
+                type: 'post',
+                dataType: 'json',
+                cache: false,
+                data: {
+                    currency: currency,
+                    no_vat: no_vat,
+                    not_on_order: not_on_order,
+                    price_from: price_from,
+                    price_to: price_to,
+                    rating: rating,
+                    warehouse_moscow: warehouse_moscow,
+                    warehouse_europe: warehouse_europe,
+                    remote_warehouse: remote_warehouse,
+                    category: category,
+                    count: count
+                },
+                success: function (data_json) {
+                    if (data_json['countcon']) {
+                        count = data_json['countcon'];
+                    }
+                    count++;
+                    var value = (count * 100 / y).toFixed(2) + '%';
+                    $('.progress-bar').width(value).html(value);
+                    $('#resp').html(data_json['status'] + ' ' + data_json['countcon']);
+
+                    if (data_json['status'] && count < y) {
+                        StartImport(e);
+                    } else {
+                        alert(data_json['text']);
+                    }
+                }
+            });
+        } else {
+            alert('Error limit');
+        }
+    }
+
+    $('#rating-group input:checkbox').click(function(){
+        if ($(this).is(':checked')) {
+            $('#rating-group input:checkbox').not(this).prop('checked', false);
+        }
+    });
     //--></script>
+<div class="row">
+    <div class="text-center">
+        <div id="resp"></div>
+    </div>
+</div>
 {{ footer }}

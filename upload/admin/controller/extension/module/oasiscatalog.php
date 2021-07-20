@@ -10,6 +10,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     private const API_URL = 'https://api.oasiscatalog.com/v4/';
     private const API_CURRENCYES = 'currencies';
     private const API_CATEGORIES = 'categories';
+    private const API_PRODUCTS = 'products';
 
     /**
      * @throws Exception
@@ -94,8 +95,6 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
                 unset($result, $item, $parent, $dl);
 
-                //next
-
             } else {
                 $data['error_warning'] = $this->language->get('error_api_key');
             }
@@ -110,70 +109,103 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $this->response->setOutput($this->load->view(self::ROUTE, $data));
     }
 
+    /**
+     * @throws Exception
+     */
+    public function import()
+    {
+        $json = [];
+
+        if ($this->request->server['REQUEST_METHOD'] === 'POST') {
+            $this->load->language(self::ROUTE);
+            $this->load->model('setting/setting');
+
+            $count = isset($this->request->post['count']) ? (int)$this->request->post['count'] : false;
+
+            $args = [
+                'key' => $this->config->get('oasiscatalog_api_key'),
+                'currency' => isset($this->request->post['currency']) ? $this->request->post['currency'] : 'rub',
+                'format' => 'json',
+                'no_vat' => isset($this->request->post['no_vat']) ? $this->request->post['no_vat'] : 0,
+                'limit' => 1,
+            ];
+
+            if (isset($this->request->post['not_on_order']) && $this->request->post['not_on_order'] !== '') {
+                $args['not_on_order'] = $this->request->post['not_on_order'];
+            }
+
+            if (isset($this->request->post['price_from']) && $this->request->post['price_from'] !== '') {
+                $args['price_from'] = $this->request->post['price_from'];
+            }
+
+            if (isset($this->request->post['price_to']) && $this->request->post['price_to'] !== '') {
+                $args['price_to'] = $this->request->post['price_to'];
+            }
+
+            if (isset($this->request->post['rating']) && $this->request->post['rating'] !== '') {
+                $args['rating'] = $this->request->post['rating'];
+            }
+
+            if (isset($this->request->post['warehouse_moscow']) && $this->request->post['warehouse_moscow'] !== '') {
+                $args['warehouse_moscow'] = $this->request->post['warehouse_moscow'];
+            }
+
+            if (isset($this->request->post['warehouse_europe']) && $this->request->post['warehouse_europe'] !== '') {
+                $args['warehouse_europe'] = $this->request->post['warehouse_europe'];
+            }
+
+            if (isset($this->request->post['remote_warehouse']) && $this->request->post['remote_warehouse'] !== '') {
+                $args['remote_warehouse'] = $this->request->post['remote_warehouse'];
+            }
+
+            if (isset($this->request->post['category']) && $this->request->post['category'] !== '') {
+                $args['category'] = implode(',', $this->request->post['category']);
+            }
+
+            try {
+                $data_query = $this->curl_query(self::API_PRODUCTS, $args);
+
+                if ($data_query) {
+                    $data = [];
+                    foreach ($data_query as $product) {
+                        $categories = $product->categories;
+                        foreach ($categories as $category) {
+                            $data['categories'][] = $this->addCategory($category);
+                        }
+                    }
+                    unset($product);
+
+                    //d($data);
+                    // next
+
+                    $stat_insert = 'Товар добавлен.';
+                    $this->saveToLog(date('Ymdhis'), $stat_insert);
+                    $json['text'] = 'Ок!';
+                    $json['status'] = $stat_insert;
+                    $json['countcon'] = $count;
+                } else {
+                    $json['text'] = 'Error';
+                    $json['status'] = 'Нет страниц для обработки';
+                }
+            } catch (\Exception $exception) {
+                $this->saveToLog($count, $exception->getMessage());
+
+                return;
+            }
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
     public function getTestData()
     {
-        $test_data = [
-            0 => (object) [
-                'id' => 1906,
-                'parent_id' => 0,
-                'root' => 1906,
-                'level' => 1,
-                'slug' => 'vip',
-                'name' => 'VIP',
-                'path' => 'vip',
-            ],
-            1 => (object) [
-                'id' => 2016,
-                'parent_id' => 1906,
-                'root' => 1906,
-                'level' => 2,
-                'slug' => 'ofisnie-aksessuari',
-                'name' => 'Офисные аксессуары',
-                'path' => 'vip/ofisnie-aksessuari',
-            ],
-            2 => (object) [
-                'id' => 2026,
-                'parent_id' => 2016,
-                'root' => 1906,
-                'level' => 3,
-                'slug' => 'podarochnie-nabori',
-                'name' => 'Подарочные наборы',
-                'path' => 'vip/ofisnie-aksessuari/podarochnie-nabori',
-            ],
-            3 => (object) [
-                'id' => 2222,
-                'parent_id' => 2026,
-                'root' => 1906,
-                'level' => 4,
-                'slug' => 'podarochnie-nabori321354',
-                'name' => 'Подарочные наборы321654',
-                'path' => 'vip/ofisnie-aksessuari/podarochnie-nabori321654',
-            ],
-            4 => (object) [
-                'id' => 2020,
-                'parent_id' => 2016,
-                'root' => 1906,
-                'level' => 3,
-                'slug' => 'bloknoti',
-                'name' => 'Блокноты',
-                'path' => 'vip/ofisnie-aksessuari/bloknoti',
-            ],
-            5 => (object) [
-                'id' => 2030,
-                'parent_id' => 1906,
-                'root' => 1906,
-                'level' => 2,
-                'slug' => 'ofisnie-aksessuari222',
-                'name' => 'Офисные аксессуары1222',
-                'path' => 'vip/ofisnie-aksessuari222',
-            ],
-        ];
-        //d($this->sortArr($test_data));
-
         $json = [];
 
         $this->load->language(self::ROUTE);
         $this->load->model('setting/setting');
+
+        $count = isset($this->request->post['count']) ? (int)$this->request->post['count'] : false;
 
         $args = [
             'key' => $this->config->get('oasiscatalog_api_key'),
@@ -181,30 +213,176 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             'format' => 'json',
             'no_vat' => 0,
             'rating' => 1,
-            'category' => 3257,
+            'price_from' => 100,
+            'price_to' => 105,
+            'limit' => 1,
         ];
 
-        $type = 'products';
+        try {
+            $data_query = $this->curl_query(self::API_PRODUCTS, $args);
 
-        //$data_query = $this->curl_query($type, $args);
+            if ($data_query) {
+                $stat_insert = 'Товар добавлен.';
+                $this->saveToLog(date('Ymdhis'), $stat_insert);
+                $json['text'] = 'Ок!';
+                $json['status'] = $stat_insert;
+                $json['countcon'] = $count;
+            } else {
+                $json['text'] = 'Error';
+                $json['status'] = 'Нет страниц для обработки';
+            }
+        } catch (\Exception $exception) {
+            $this->saveToLog($count, $exception->getMessage());
+
+            return;
+        }
 
         if ($this->request->server['REQUEST_METHOD'] == 'POST') {
-            $json['success'] = $this->request->post['currency'];
+            // post data
         }
 
         $this->response->addHeader('Content-Type: application/json');
         $this->response->setOutput(json_encode($json));
     }
 
-    public function sortArr ($data = []) {
-        $result = [];
+    /**
+     * @param $id
+     * @return bool
+     * @throws Exception
+     */
+    public function addCategory($id)
+    {
+        $category = $this->getCategoryOasis($id);
 
-        foreach ($data as $item) {
-            $parent = isset($result[$item->parent_id]) ? $result[$item->parent_id] . ' > ' : '';
-            $result[$item->id] = $parent . $item->name;
+        if (!$category) {
+            return false;
         }
 
-        return$result;
+        $this->load->model('localisation/language');
+
+        $languages = $this->model_localisation_language->getLanguages();
+
+        $data['category_description'] = [];
+
+        foreach ($languages as $language) {
+            $data['category_description'][$language['language_id']] = [
+                'name' => $category->name,
+                'description' => '',
+                'meta_title' => $category->name,
+                'meta_description' => '',
+                'meta_keyword' => '',
+            ];
+        }
+        unset($language);
+
+        $data['path'] = '';
+
+        $category_oc = $this->getCategoryIdByKeyword($category->slug);
+
+        if ($category_oc) {
+            return $category_oc;
+        }
+
+        $data['parent_id'] = 0;
+
+        if (!is_null($category->parent_id)) {
+            $parent_category_id = $this->getCategoryIdByKeyword($this->getCategoryOasis($category->parent_id)->slug);
+
+            if ($parent_category_id) {
+                $data['parent_id'] = $parent_category_id;
+            } else {
+                $data['parent_id'] = $this->addCategory($category->parent_id);
+            }
+        }
+
+        $data['filter'] = '';
+
+        $this->load->model('setting/store');
+
+        $stores = $this->model_setting_store->getStores();
+
+        if ($stores) {
+            foreach ($stores as $store) {
+                $data['category_store'][] = $store['store_id'];
+            }
+        } else {
+            $data['category_store'] = [0];
+        }
+
+        $data['image'] = '';
+        $data['column'] = 1;
+        $data['sort_order'] = 0;
+        $data['status'] = true;
+        $data['category_seo_url'] = [];
+
+        foreach ($data['category_store'] as $store) {
+            $i = 0;
+            $postfix = '';
+            foreach ($languages as $language) {
+                if ($i > 0) {
+                    $postfix = '-' . $i;
+                }
+                $data['category_seo_url'][$store][$language['language_id']] = $category->slug . $postfix;
+                $i++;
+            }
+            unset($language, $i, $postfix);
+        }
+        unset($store);
+
+        $data['category_layout'] = [0 => ''];
+
+        $this->load->model('catalog/category');
+
+        $category_id = $this->model_catalog_category->addCategory($data);
+
+        return $category_id;
+    }
+
+    /**
+     * @param $seo_url
+     * @return bool
+     * @throws Exception
+     */
+    public function getCategoryIdByKeyword($seo_url)
+    {
+        $this->load->model('design/seo_url');
+
+        $seo_urls = $this->model_design_seo_url->getSeoUrlsByKeyword($seo_url);
+
+        if ($seo_urls) {
+            $result = explode('=', $seo_urls[0]['query']);
+
+            return $result[1];
+        }
+
+        return false;
+    }
+
+    /**
+     * @param $id
+     * @return bool|mixed
+     */
+    public function getCategoryOasis($id)
+    {
+        $args = [];
+        $args['key'] = $this->config->get('oasiscatalog_api_key');
+        $args['format'] = 'json';
+        $args['fields'] = 'id,parent_id,root,level,slug,name,path';
+
+        $categories = $this->getCategories($args);
+
+
+        $neededObject = array_filter($categories, function ($e) use ($id) {
+            return $e->id == $id;
+        });
+
+        if (!$neededObject) {
+            return false;
+        }
+
+        $result = array_shift($neededObject);
+
+        return $result;
     }
 
     /**
@@ -240,6 +418,23 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         curl_close($ch);
 
         return $http_code === 200 ? $result : false;
+    }
+
+    /**
+     * @param $id
+     * @param $msg
+     */
+    protected function saveToLog($id, $msg)
+    {
+        $str = date('Y-m-d H:i:s') . ' | page_id=' . $id . ' | ' . $msg . PHP_EOL;
+        $filename = DIR_LOGS . 'oasiscatalog_log.txt';
+        if (!file_exists($filename)) {
+            $fp = fopen($filename, 'wb');
+            fwrite($fp, $str);
+            fclose($fp);
+        } else {
+            file_put_contents($filename, $str, FILE_APPEND | LOCK_EX);
+        }
     }
 
     /**
