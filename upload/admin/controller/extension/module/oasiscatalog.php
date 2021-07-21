@@ -11,6 +11,16 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     private const API_CURRENCYES = 'currencies';
     private const API_CATEGORIES = 'categories';
     private const API_PRODUCTS = 'products';
+    private const API_CAT_FIELDS = 'id,parent_id,root,level,slug,name,path';
+
+    public function __construct($registry)
+    {
+        parent::__construct($registry);
+
+        $this->load->model('setting/setting');
+
+        define('API_KEY', $this->config->get('oasiscatalog_api_key'));
+    }
 
     /**
      * @throws Exception
@@ -19,7 +29,6 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     {
         $this->load->language(self::ROUTE);
         $this->document->setTitle($this->language->get('heading_title'));
-        $this->load->model('setting/setting');
 
         if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
 
@@ -61,15 +70,11 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $data['user_token'] = $this->session->data['user_token'];
 
         $data['status'] = $this->config->get('oasiscatalog_status');
-        $data['api_key'] = $this->config->get('oasiscatalog_api_key');
+        $data['api_key'] = API_KEY;
         $data['api_key_status'] = false;
 
         if ($data['api_key']) {
-            $args = [
-                'key' => $data['api_key'],
-            ];
-
-            $currencies = $this->getCurrencies($args);
+            $currencies = $this->getCurrenciesOasis();
             $data['api_key_status'] = $currencies ? true : false;
 
             if ($data['api_key_status']) {
@@ -79,10 +84,9 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                     $data['currencies'][$currency->code] = $currency->full_name;
                 }
 
-                $args['format'] = 'json';
-                $args['fields'] = 'id,parent_id,root,level,slug,name,path';
+                $args['fields'] = self::API_CAT_FIELDS;
 
-                $categories = $this->getCategories($args);
+                $categories = $this->getCategoriesOasis($args);
                 $dl = '&nbsp;&gt;&nbsp;';
                 $result = [];
 
@@ -118,14 +122,11 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         if ($this->request->server['REQUEST_METHOD'] === 'POST') {
             $this->load->language(self::ROUTE);
-            $this->load->model('setting/setting');
 
             $count = isset($this->request->post['count']) ? (int)$this->request->post['count'] : false;
 
             $args = [
-                'key' => $this->config->get('oasiscatalog_api_key'),
                 'currency' => isset($this->request->post['currency']) ? $this->request->post['currency'] : 'rub',
-                'format' => 'json',
                 'no_vat' => isset($this->request->post['no_vat']) ? $this->request->post['no_vat'] : 0,
                 'limit' => 1,
             ];
@@ -163,6 +164,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             }
 
             try {
+                $oasis_cat = $this->getCategoriesOasis(['fields' => self::API_CAT_FIELDS]);
                 $data_query = $this->curl_query(self::API_PRODUCTS, $args);
 
                 if ($data_query) {
@@ -170,12 +172,12 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                     foreach ($data_query as $product) {
                         $categories = $product->categories;
                         foreach ($categories as $category) {
-                            $data['categories'][] = $this->addCategory($category);
+                            $data['categories'][] = $this->addCategory($oasis_cat, $category);
                         }
                     }
                     unset($product);
 
-                    //d($data);
+                    //d($data_query);
                     // next
 
                     $stat_insert = 'Товар добавлен.';
@@ -203,14 +205,11 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $json = [];
 
         $this->load->language(self::ROUTE);
-        $this->load->model('setting/setting');
 
         $count = isset($this->request->post['count']) ? (int)$this->request->post['count'] : false;
 
         $args = [
-            'key' => $this->config->get('oasiscatalog_api_key'),
             'currency' => 'rub',
-            'format' => 'json',
             'no_vat' => 0,
             'rating' => 1,
             'price_from' => 100,
@@ -222,6 +221,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             $data_query = $this->curl_query(self::API_PRODUCTS, $args);
 
             if ($data_query) {
+                //d($data_query);
                 $stat_insert = 'Товар добавлен.';
                 $this->saveToLog(date('Ymdhis'), $stat_insert);
                 $json['text'] = 'Ок!';
@@ -246,13 +246,14 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     }
 
     /**
+     * @param $oasis_cat
      * @param $id
      * @return bool
      * @throws Exception
      */
-    public function addCategory($id)
+    public function addCategory($oasis_cat, $id)
     {
-        $category = $this->getCategoryOasis($id);
+        $category = $this->getCategoryOasis($oasis_cat, $id);
 
         if (!$category) {
             return false;
@@ -286,12 +287,12 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $data['parent_id'] = 0;
 
         if (!is_null($category->parent_id)) {
-            $parent_category_id = $this->getCategoryIdByKeyword($this->getCategoryOasis($category->parent_id)->slug);
+            $parent_category_id = $this->getCategoryIdByKeyword($this->getCategoryOasis($oasis_cat, $category->parent_id)->slug);
 
             if ($parent_category_id) {
                 $data['parent_id'] = $parent_category_id;
             } else {
-                $data['parent_id'] = $this->addCategory($category->parent_id);
+                $data['parent_id'] = $this->addCategory($oasis_cat, $category->parent_id);
             }
         }
 
@@ -359,19 +360,12 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     }
 
     /**
+     * @param $categories
      * @param $id
      * @return bool|mixed
      */
-    public function getCategoryOasis($id)
+    public function getCategoryOasis($categories, $id)
     {
-        $args = [];
-        $args['key'] = $this->config->get('oasiscatalog_api_key');
-        $args['format'] = 'json';
-        $args['fields'] = 'id,parent_id,root,level,slug,name,path';
-
-        $categories = $this->getCategories($args);
-
-
         $neededObject = array_filter($categories, function ($e) use ($id) {
             return $e->id == $id;
         });
@@ -389,7 +383,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @param array $args
      * @return bool|mixed
      */
-    public function getCategories($args = [])
+    public function getCategoriesOasis($args = [])
     {
         return $this->curl_query(self::API_CATEGORIES, $args);
     }
@@ -398,7 +392,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @param array $args
      * @return bool|mixed
      */
-    public function getCurrencies($args = [])
+    public function getCurrenciesOasis($args = [])
     {
         return $this->curl_query(self::API_CURRENCYES, $args);
     }
@@ -410,6 +404,12 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      */
     public function curl_query($type, $args = [])
     {
+        $args_pref = [
+            'key' => API_KEY,
+            'format' => 'json'
+        ];
+        $args = array_merge($args_pref, $args);
+
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, self::API_URL . $type . '?' . http_build_query($args));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -442,7 +442,6 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      */
     public function install()
     {
-        $this->load->model('setting/setting');
         $settings = [
             'oasiscatalog_status' => 0,
             'oasiscatalog_api_key' => '',
@@ -456,7 +455,6 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      */
     public function uninstall()
     {
-        $this->load->model('setting/setting');
         $this->model_setting_setting->deleteSetting('oasiscatalog');
     }
 
