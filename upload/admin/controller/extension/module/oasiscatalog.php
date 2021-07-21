@@ -7,10 +7,13 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 {
     private $error = [];
     private const ROUTE = 'extension/module/oasiscatalog';
-    private const API_URL = 'https://api.oasiscatalog.com/v4/';
+    private const API_URL = 'https://api.oasiscatalog.com/';
+    private const API_V4 = 'v4/';
+    private const API_V3 = 'v3/';
     private const API_CURRENCYES = 'currencies';
     private const API_CATEGORIES = 'categories';
     private const API_PRODUCTS = 'products';
+    private const API_BRANDS = 'brands';
     private const API_CAT_FIELDS = 'id,parent_id,root,level,slug,name,path';
 
     public function __construct($registry)
@@ -128,6 +131,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             $args = [
                 'currency' => isset($this->request->post['currency']) ? $this->request->post['currency'] : 'rub',
                 'no_vat' => isset($this->request->post['no_vat']) ? $this->request->post['no_vat'] : 0,
+                'fieldset' => 'full',
                 'limit' => 1,
             ];
 
@@ -165,19 +169,31 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
             try {
                 $oasis_cat = $this->getCategoriesOasis(['fields' => self::API_CAT_FIELDS]);
-                $data_query = $this->curl_query(self::API_PRODUCTS, $args);
 
-                if ($data_query) {
+                //$args['category'] = 3071;
+                //$args['ids'] = '00000003555,00000008288';
+
+                $products = $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);
+                //d($this->curl_query(self::API_V4, self::API_PRODUCTS . '/00000003555'));
+
+                if ($products) {
                     $data = [];
-                    foreach ($data_query as $product) {
+                    foreach ($products as $product) {
                         $categories = $product->categories;
                         foreach ($categories as $category) {
-                            $data['categories'][] = $this->addCategory($oasis_cat, $category);
+                            $data['product_category'][] = $this->addCategory($oasis_cat, $category);
                         }
+
+                        if (!is_null($product->brand_id)) {
+                            $data['manufacturer_id'] = $this->addBrand($this->getBrandsOasis(), $product->brand_id);
+                        } else {
+                            $data['manufacturer_id'] = 0;
+                        }
+
                     }
                     unset($product);
 
-                    //d($data_query);
+                    //d($data);
                     // next
 
                     $stat_insert = 'Товар добавлен.';
@@ -211,17 +227,24 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $args = [
             'currency' => 'rub',
             'no_vat' => 0,
-            'rating' => 1,
-            'price_from' => 100,
-            'price_to' => 105,
-            'limit' => 1,
         ];
 
-        try {
-            $data_query = $this->curl_query(self::API_PRODUCTS, $args);
+        $oasis_cat = $this->getCategoriesOasis(['fields' => self::API_CAT_FIELDS]);
 
-            if ($data_query) {
-                //d($data_query);
+        $args['category'] = 3071;
+        $args['ids'] = '00000003555,00000008288';
+        //$args['ids'] = '00000003555';
+        $args['fieldset'] = 'full';
+
+        try {
+            $products = $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);
+
+            if ($products) {
+                foreach ($products as $product) {
+                    $manufacturer_id = $this->addBrand($this->getBrandsOasis(), $product->brand_id);
+                    d($manufacturer_id);
+                }
+
                 $stat_insert = 'Товар добавлен.';
                 $this->saveToLog(date('Ymdhis'), $stat_insert);
                 $json['text'] = 'Ок!';
@@ -246,14 +269,14 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     }
 
     /**
-     * @param $oasis_cat
+     * @param $categories
      * @param $id
      * @return bool
      * @throws Exception
      */
-    public function addCategory($oasis_cat, $id)
+    public function addCategory($categories, $id)
     {
-        $category = $this->getCategoryOasis($oasis_cat, $id);
+        $category = $this->searchObject($categories, $id);
 
         if (!$category) {
             return false;
@@ -278,7 +301,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         $data['path'] = '';
 
-        $category_oc = $this->getCategoryIdByKeyword($category->slug);
+        $category_oc = $this->getIdByKeyword($category->slug);
 
         if ($category_oc) {
             return $category_oc;
@@ -287,7 +310,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $data['parent_id'] = 0;
 
         if (!is_null($category->parent_id)) {
-            $parent_category_id = $this->getCategoryIdByKeyword($this->getCategoryOasis($oasis_cat, $category->parent_id)->slug);
+            $parent_category_id = $this->getIdByKeyword($this->searchObject($oasis_cat, $category->parent_id)->slug);
 
             if ($parent_category_id) {
                 $data['parent_id'] = $parent_category_id;
@@ -297,39 +320,12 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         }
 
         $data['filter'] = '';
-
-        $this->load->model('setting/store');
-
-        $stores = $this->model_setting_store->getStores();
-
-        if ($stores) {
-            foreach ($stores as $store) {
-                $data['category_store'][] = $store['store_id'];
-            }
-        } else {
-            $data['category_store'] = [0];
-        }
-
+        $data['category_store'] = $this->getStores();
         $data['image'] = '';
         $data['column'] = 1;
         $data['sort_order'] = 0;
         $data['status'] = true;
-        $data['category_seo_url'] = [];
-
-        foreach ($data['category_store'] as $store) {
-            $i = 0;
-            $postfix = '';
-            foreach ($languages as $language) {
-                if ($i > 0) {
-                    $postfix = '-' . $i;
-                }
-                $data['category_seo_url'][$store][$language['language_id']] = $category->slug . $postfix;
-                $i++;
-            }
-            unset($language, $i, $postfix);
-        }
-        unset($store);
-
+        $data['category_seo_url'] = $this->getSeoUrl($data['category_store'], $category->slug);
         $data['category_layout'] = [0 => ''];
 
         $this->load->model('catalog/category');
@@ -340,11 +336,96 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     }
 
     /**
+     * @param $brands
+     * @param $id
+     * @return bool
+     * @throws Exception
+     */
+    public function addBrand($brands, $id)
+    {
+        $brand = $this->searchObject($brands, $id);
+
+        if (!$brand) {
+            return false;
+        }
+
+        $brand_oc = $this->getIdByKeyword($brand->slug);
+
+        if ($brand_oc) {
+            return $brand_oc;
+        }
+
+        $data['name'] = $brand->name;
+        $data['manufacturer_store'] = $this->getStores();
+        $data['image'] = $brand->logotype;
+        $data['sort_order'] = '';
+        $data['manufacturer_seo_url'] = $this->getSeoUrl($data['manufacturer_store'], $brand->slug);
+
+        $this->load->model('catalog/manufacturer');
+
+        $manufacturer_id = $this->model_catalog_manufacturer->addManufacturer($data);
+
+        return $manufacturer_id;
+    }
+
+    /**
+     * @param $stores
+     * @param $slug
+     * @return array
+     * @throws Exception
+     */
+    public function getSeoUrl($stores, $slug)
+    {
+        $data = [];
+
+        $this->load->model('localisation/language');
+
+        $languages = $this->model_localisation_language->getLanguages();
+
+        foreach ($stores as $store) {
+            $i = 0;
+            $postfix = '';
+            foreach ($languages as $language) {
+                if ($i > 0) {
+                    $postfix = '-' . $i;
+                }
+                $data[$store][$language['language_id']] = $slug . $postfix;
+                $i++;
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * @return array
+     * @throws Exception
+     */
+    public function getStores()
+    {
+        $data = [];
+
+        $this->load->model('setting/store');
+
+        $stores = $this->model_setting_store->getStores();
+
+        if ($stores) {
+            foreach ($stores as $store) {
+                $data[] = $store['store_id'];
+            }
+        } else {
+            $data = [0];
+        }
+
+        return $data;
+    }
+
+    /**
      * @param $seo_url
      * @return bool
      * @throws Exception
      */
-    public function getCategoryIdByKeyword($seo_url)
+    public function getIdByKeyword($seo_url)
     {
         $this->load->model('design/seo_url');
 
@@ -360,13 +441,13 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     }
 
     /**
-     * @param $categories
+     * @param $data
      * @param $id
      * @return bool|mixed
      */
-    public function getCategoryOasis($categories, $id)
+    public function searchObject($data, $id)
     {
-        $neededObject = array_filter($categories, function ($e) use ($id) {
+        $neededObject = array_filter($data, function ($e) use ($id) {
             return $e->id == $id;
         });
 
@@ -385,7 +466,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      */
     public function getCategoriesOasis($args = [])
     {
-        return $this->curl_query(self::API_CATEGORIES, $args);
+        return $this->curl_query(self::API_V4, self::API_CATEGORIES, $args);
     }
 
     /**
@@ -394,24 +475,34 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      */
     public function getCurrenciesOasis($args = [])
     {
-        return $this->curl_query(self::API_CURRENCYES, $args);
+        return $this->curl_query(self::API_V4, self::API_CURRENCYES, $args);
     }
 
     /**
+     * @param array $args
+     * @return bool|mixed
+     */
+    public function getBrandsOasis($args = [])
+    {
+        return $this->curl_query(self::API_V3, self::API_BRANDS, $args);
+    }
+
+    /**
+     * @param       $version
      * @param       $type
      * @param array $args
      * @return bool|mixed
      */
-    public function curl_query($type, $args = [])
+    public function curl_query($version, $type, $args = [])
     {
         $args_pref = [
             'key' => API_KEY,
-            'format' => 'json'
+            'format' => 'json',
         ];
         $args = array_merge($args_pref, $args);
 
         $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, self::API_URL . $type . '?' . http_build_query($args));
+        curl_setopt($ch, CURLOPT_URL, self::API_URL . $version . $type . '?' . http_build_query($args));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $result = json_decode(curl_exec($ch));
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
