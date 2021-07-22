@@ -310,12 +310,12 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $data['parent_id'] = 0;
 
         if (!is_null($category->parent_id)) {
-            $parent_category_id = $this->getIdByKeyword($this->searchObject($oasis_cat, $category->parent_id)->slug);
+            $parent_category_id = $this->getIdByKeyword($this->searchObject($categories, $category->parent_id)->slug);
 
             if ($parent_category_id) {
                 $data['parent_id'] = $parent_category_id;
             } else {
-                $data['parent_id'] = $this->addCategory($oasis_cat, $category->parent_id);
+                $data['parent_id'] = $this->addCategory($categories, $category->parent_id);
             }
         }
 
