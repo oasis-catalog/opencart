@@ -357,9 +357,17 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         $data['name'] = $brand->name;
         $data['manufacturer_store'] = $this->getStores();
-        $data['image'] = $brand->logotype;
         $data['sort_order'] = '';
         $data['manufacturer_seo_url'] = $this->getSeoUrl($data['manufacturer_store'], $brand->slug);
+
+        $data_img = [
+            'folder_name' => 'catalog/oasis/manufacturers',
+            'img_url' => $brand->logotype,
+            'img_name' => $brand->slug,
+            'count' => 0,
+        ];
+
+        $data['image'] = $this->saveImg($data_img);
 
         $this->load->model('catalog/manufacturer');
 
@@ -509,6 +517,48 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         curl_close($ch);
 
         return $http_code === 200 ? $result : false;
+    }
+
+    /**
+     * @param $data
+     * @return bool|string
+     */
+    protected function saveImg($data)
+    {
+        $extention = pathinfo($data['img_url']);
+
+        if ($extention['extension'] === 'tif') {
+            return false;
+        }
+
+        $data['count'] === 0 ? $count = '' : $count = '-'.$data['count'];
+
+        $img = $this->imgFolder($data['folder_name']) . $data['img_name'] . $count . '.' . $extention['extension'];
+
+        if (!file_exists($img)) {
+            $pic = file_get_contents($data['img_url']);
+            file_put_contents($img, $pic);
+        }
+
+        $result = $data['folder_name'] . '/' . $data['img_name'] . $count . '.' . $extention['extension'];
+
+        return $result;
+    }
+
+    /**
+     * @param $folder
+     * @return bool|string
+     */
+    protected function imgFolder($folder)
+    {
+        $path = DIR_IMAGE . $folder . '/';
+        if (!file_exists($path)) {
+            $create = mkdir($path, 0755, true);
+            if (!$create)
+                return false;
+        }
+
+        return $path;
     }
 
     /**
