@@ -190,10 +190,10 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                             $data['manufacturer_id'] = 0;
                         }
 
+                        $data['product_attributes'] = $this->addAttributes($product->attributes);
                     }
                     unset($product);
 
-                    //d($data);
                     // next
 
                     $stat_insert = 'Товар добавлен.';
@@ -231,9 +231,9 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         $oasis_cat = $this->getCategoriesOasis(['fields' => self::API_CAT_FIELDS]);
 
-        $args['category'] = 3071;
-        $args['ids'] = '00000003555,00000008288';
-        //$args['ids'] = '00000003555';
+        //$args['category'] = 3071;
+        //$args['ids'] = '00000003555,00000008288';
+        $args['ids'] = '00000003555';
         $args['fieldset'] = 'full';
 
         try {
@@ -241,8 +241,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
             if ($products) {
                 foreach ($products as $product) {
-                    $manufacturer_id = $this->addBrand($this->getBrandsOasis(), $product->brand_id);
-                    d($manufacturer_id);
+                    d($this->addAttributes($product->attributes));
                 }
 
                 $stat_insert = 'Товар добавлен.';
@@ -336,6 +335,62 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     }
 
     /**
+     * @param $attributes
+     * @return array
+     * @throws Exception
+     */
+    public function addAttributes($attributes)
+    {
+        $this->load->model('catalog/attribute');
+        $this->load->model('localisation/language');
+
+        $languages = $this->model_localisation_language->getLanguages();
+
+        $data = [];
+
+        foreach ($attributes as $attribute) {
+            $name = $attribute->name;
+            $neededAttribute = [];
+
+            $attributes_store = $this->model_catalog_attribute->getAttributes();
+            $neededAttribute = array_filter($attributes_store, function ($e) use ($name) {
+                return $e['name'] == $name;
+            });
+
+            if ($neededAttribute) {
+                $attr = array_shift($neededAttribute);
+
+                $key_attr = array_search($attr['name'], array_column($data, 'name'));
+
+                if ($key_attr) {
+                    foreach ($data[$key_attr]['product_attribute_description'] as $key => $value) {
+                        $data[$key_attr]['product_attribute_description'][$key]['text'] .= ', ' . $attribute->value;
+                    }
+                } else {
+                    $data[] = [
+                        'name' => $attr['name'],
+                        'attribute_id' => $attr['attribute_id'],
+                        'product_attribute_description' => $this->toLanguagesArr($languages, 'text', $attribute->value),
+                    ];
+                }
+            } else {
+                $data_attribute['attribute_description'] = $this->toLanguagesArr($languages, 'name', $attribute->name);
+                $data_attribute['attribute_group_id'] = $this->getAttributeGroupId($languages);
+                $data_attribute['sort_order'] = '';
+
+                $data[] = [
+                    'name' => $attribute->name,
+                    'attribute_id' => $this->model_catalog_attribute->addAttribute($data_attribute),
+                    'product_attribute_description' => $this->toLanguagesArr($languages, 'text', $attribute->value),
+                ];
+            }
+            unset($attr, $key_attr, $key, $value, $data_attribute);
+        }
+
+        return $data;
+    }
+
+    /**
      * @param $brands
      * @param $id
      * @return bool
@@ -374,6 +429,38 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $manufacturer_id = $this->model_catalog_manufacturer->addManufacturer($data);
 
         return $manufacturer_id;
+    }
+
+    /**
+     * @param $languages
+     * @return mixed
+     * @throws Exception
+     */
+    public function getAttributeGroupId($languages)
+    {
+        $this->load->model('catalog/attribute_group');
+        $attribute_groups = $this->model_catalog_attribute_group->getAttributeGroups();
+
+        $name = 'Характеристики';
+        $key = array_search($name, array_column($attribute_groups, 'name'));
+
+        if ($key) {
+            $attribute_group_id = $attribute_groups[$key]['attribute_group_id'];
+        } else {
+            $data_attribute_group = [];
+
+            foreach ($languages as $language) {
+                $data_attribute_group['attribute_group_description'][$language['language_id']] = [
+                    'name' => $name,
+                ];
+            }
+
+            $data_attribute_group['sort_order'] = '';
+
+            $attribute_group_id = $this->model_catalog_attribute_group->addAttributeGroup($data_attribute_group);
+        }
+
+        return $attribute_group_id;
     }
 
     /**
@@ -449,26 +536,6 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     }
 
     /**
-     * @param $data
-     * @param $id
-     * @return bool|mixed
-     */
-    public function searchObject($data, $id)
-    {
-        $neededObject = array_filter($data, function ($e) use ($id) {
-            return $e->id == $id;
-        });
-
-        if (!$neededObject) {
-            return false;
-        }
-
-        $result = array_shift($neededObject);
-
-        return $result;
-    }
-
-    /**
      * @param array $args
      * @return bool|mixed
      */
@@ -493,6 +560,45 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     public function getBrandsOasis($args = [])
     {
         return $this->curl_query(self::API_V3, self::API_BRANDS, $args);
+    }
+
+    /**
+     * @param $data
+     * @param $id
+     * @return bool|mixed
+     */
+    public function searchObject($data, $id)
+    {
+        $neededObject = array_filter($data, function ($e) use ($id) {
+            return $e->id == $id;
+        });
+
+        if (!$neededObject) {
+            return false;
+        }
+
+        $result = array_shift($neededObject);
+
+        return $result;
+    }
+
+    /**
+     * @param $key
+     * @param $value
+     * @return array
+     * @throws Exception
+     */
+    public function toLanguagesArr($languages, $key, $value)
+    {
+        $data = [];
+
+        foreach ($languages as $language) {
+            $data[$language['language_id']] = [
+                $key => $value,
+            ];
+        }
+
+        return $data;
     }
 
     /**
@@ -531,7 +637,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             return false;
         }
 
-        $data['count'] === 0 ? $count = '' : $count = '-'.$data['count'];
+        $data['count'] === 0 ? $count = '' : $count = '-' . $data['count'];
 
         $img = $this->imgFolder($data['folder_name']) . $data['img_name'] . $count . '.' . $extention['extension'];
 
@@ -554,8 +660,9 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $path = DIR_IMAGE . $folder . '/';
         if (!file_exists($path)) {
             $create = mkdir($path, 0755, true);
-            if (!$create)
+            if (!$create) {
                 return false;
+            }
         }
 
         return $path;
