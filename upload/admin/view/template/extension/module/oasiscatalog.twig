@@ -298,19 +298,19 @@
                     category: category,
                     count: count
                 },
-                success: function (data_json) {
-                    if (data_json['countcon']) {
-                        count = data_json['countcon'];
+                success: function (response) {
+                    if (response['countcon']) {
+                        count = response['countcon'];
                     }
                     count++;
                     var value = (count * 100 / y).toFixed(2) + '%';
                     $('.progress-bar').width(value).html(value);
-                    $('#resp').html(data_json['status'] + ' ' + data_json['countcon']);
+                    $('#resp').html(response['status'] + ' ' + response['countcon']);
 
-                    if (data_json['status'] && count < y) {
+                    if (response['status'] && count < y) {
                         StartImport(e);
                     } else {
-                        alert(data_json['text']);
+                        alert(response['text']);
                     }
                 }
             });

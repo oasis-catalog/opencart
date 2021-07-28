@@ -30,6 +30,9 @@ $_['text_remote_warehouse'] = 'На удаленном складе';
 $_['entry_status'] = 'Статус';
 $_['entry_api_key'] = 'API ключ';
 
+//Variable
+$_['var_size'] = 'Размер';
+
 // Button
 $_['button_import'] = 'Импорт';
 

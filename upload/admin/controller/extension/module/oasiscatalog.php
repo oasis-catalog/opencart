@@ -227,27 +227,32 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $args = [
             'currency' => 'rub',
             'no_vat' => 0,
+            'fieldset' => 'full',
         ];
 
-        $oasis_cat = $this->getCategoriesOasis(['fields' => self::API_CAT_FIELDS]);
-
-        //$args['category'] = 3071;
-        //$args['ids'] = '00000003555,00000008288';
-        $args['ids'] = '00000003555';
-        $args['fieldset'] = 'full';
+        $args['category'] = 3071;
+        //$args['ids'] = '00000003555,00000008288,00000003858';
+        //$args['ids'] = '00000003858';
+        //$args['fields'] = 'id,name,full_name,size,group_id';
+        $args['limit'] = 20;
 
         try {
+            $msg = [
+                'status' => '',
+                'id' => '',
+            ];
             $products = $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);
+            $oasis_cat = $this->getCategoriesOasis(['fields' => self::API_CAT_FIELDS]);
 
             if ($products) {
+                $msg = [];
+
                 foreach ($products as $product) {
-                    d($this->addAttributes($product->attributes));
+                    $msg = $this->product($product, $oasis_cat);
                 }
 
-                $stat_insert = 'Товар добавлен.';
-                $this->saveToLog(date('Ymdhis'), $stat_insert);
                 $json['text'] = 'Ок!';
-                $json['status'] = $stat_insert;
+                $json['status'] = $msg['status'];
                 $json['countcon'] = $count;
             } else {
                 $json['text'] = 'Error';
@@ -265,6 +270,294 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         $this->response->addHeader('Content-Type: application/json');
         $this->response->setOutput(json_encode($json));
+    }
+
+    public function product($product, $oasis_cat)
+    {
+        $this->load->model('catalog/product');
+
+        $data = [];
+        $msg = [];
+
+        if (!is_null($product->parent_size_id)) {
+            $this->load->language(self::ROUTE);
+
+            $option = $this->getOption($this->language->get('var_size'), $product->size, $product->total_stock);
+            $data['option'] = $option['option']['name'];
+            $data['product_option'] = $this->setOption($option);
+
+            if ($product->parent_size_id === $product->id) {
+                $msg = $this->checkProduct($data, $product, $oasis_cat);
+            } else {
+                $parent_product = $this->getProductOasis($product->parent_size_id);
+                $product_oc = $this->model_catalog_product->getProducts(['filter_model' => $parent_product[0]->article]);
+
+                if (!$product_oc) {
+                    $msg = $this->product($parent_product[0], $oasis_cat);
+                    $product_oc[] = $this->model_catalog_product->getProduct($msg['id']);
+                }
+
+                $result = $this->editProduct($product_oc[0], $product, $data['product_option']);
+
+                $msg['status'] = $result ? 'Добавлен размер для товара.' : 'Размер уже имеется у товара.';
+                $msg['id'] = $product_oc[0]['product_id'];
+
+            }
+            unset($product_oc, $result);
+
+        } else {
+            $msg = $this->checkProduct($data, $product, $oasis_cat);
+        }
+
+        $this->saveToLog($msg['id'], $msg['status']);
+
+        return $msg;
+    }
+
+    public function checkProduct($data, $product, $oasis_cat)
+    {
+        $product_oc = $this->model_catalog_product->getProducts(['filter_model' => $product->article]);
+
+        if (!$product_oc) {
+            $msg['status'] = 'Добавлен товар.';
+            $msg['id'] = $this->addProduct($data, $product, $oasis_cat);
+        } else {
+            $msg['status'] = 'Товар уже имеется в базе.';
+            $msg['id'] = $product_oc[0]['product_id'];
+        }
+
+        return $msg;
+    }
+
+    /**
+     * @param $product_info
+     * @param $product_oasis
+     * @param $product_option
+     * @return bool
+     * @throws Exception
+     */
+    public function editProduct($product_info, $product_oasis, $product_option)
+    {
+        $this->load->language(self::ROUTE);
+        $this->load->model('catalog/product');
+        $this->load->model('catalog/manufacturer');
+        $this->load->model('catalog/category');
+        $this->load->model('catalog/attribute');
+        $this->load->model('catalog/option');
+
+        $data = $product_info;
+
+        $data['product_option'] = $this->model_catalog_product->getProductOptions($product_info['product_id']);
+
+        foreach ($data['product_option'][0]['product_option_value'] as $value) {
+            if ($value['option_value_id'] === $product_option[0]['product_option_value'][0]['option_value_id']) {
+                return false;
+            }
+        }
+        unset($value);
+
+        if ((float)$data['price'] < (float)$product_oasis->price) {
+            $product_option[0]['product_option_value'][0]['price'] = (float)$product_oasis->price - (float)$data['price'];
+        } elseif ((float)$data['price'] > (float)$product_oasis->price) {
+            $product_option[0]['product_option_value'][0]['price'] = (float)$data['price'] - (float)$product_oasis->price;
+            $product_option[0]['product_option_value'][0]['price_prefix'] = '-';
+        }
+
+        $data['product_option'][0]['product_option_value'][] = $product_option[0]['product_option_value'][0];
+
+        $data['product_description'] = $this->model_catalog_product->getProductDescriptions($product_info['product_id']);
+
+        $manufacturer_info = $this->model_catalog_manufacturer->getManufacturer($product_info['manufacturer_id']);
+
+        if ($manufacturer_info) {
+            $data['manufacturer'] = $manufacturer_info['name'];
+        }
+
+        $data['product_category'] = $this->model_catalog_product->getProductCategories($product_info['product_id']);
+
+        $product_attributes = $this->model_catalog_product->getProductAttributes($product_info['product_id']);
+
+        $var_size = $this->language->get('var_size');
+
+        foreach ($product_attributes as $product_attribute) {
+            $attribute_info = $this->model_catalog_attribute->getAttribute($product_attribute['attribute_id']);
+
+            if ($attribute_info) {
+
+                $product_attribute_description = $product_attribute['product_attribute_description'];
+
+                if ($attribute_info['name'] == $var_size) {
+                    $product_attribute_description = [];
+                    foreach ($product_attribute['product_attribute_description'] as $key => $value) {
+                        $product_attribute_description[$key]['text'] = $value['text'] . ', ' . $product_oasis->size;
+                    }
+                }
+
+                $data['product_attribute'][] = [
+                    'name' => $attribute_info['name'],
+                    'attribute_id' => $product_attribute['attribute_id'],
+                    'product_attribute_description' => $product_attribute_description,
+                ];
+            }
+        }
+        unset($product_attribute);
+
+        $images = $this->model_catalog_product->getProductImages($product_info['product_id']);
+
+        $data['product_image'] = [];
+
+        foreach ($images as $key => $value) {
+            $data['product_image'][$key] = [
+                'image' => $value['image'],
+                'sort_order' => $value['sort_order'],
+            ];
+        }
+        unset($key, $value);
+
+        $arr_product = $this->setProduct($data, $product_oasis);
+
+        $this->model_catalog_product->editProduct($product_info['product_id'], $arr_product);
+
+        return true;
+    }
+
+    /**
+     * @param       $data
+     * @param       $product
+     * @param       $oasis_cat
+     * @return integer
+     * @throws Exception
+     */
+    public function addProduct($data, $product, $oasis_cat)
+    {
+        $this->load->model('catalog/product');
+
+        $categories = $product->categories;
+
+        foreach ($categories as $category) {
+            $data['product_category'][] = $this->addCategory($oasis_cat, $category);
+        }
+
+        if (!is_null($product->brand_id)) {
+            $data['manufacturer_id'] = $this->addBrand($this->getBrandsOasis(), $product->brand_id);
+        }
+
+        $data['product_attribute'] = $this->addAttributes($product->attributes);
+
+        foreach ($product->images as $image) {
+            if (isset($image->superbig)) {
+                $data_img = [
+                    'folder_name' => 'catalog/oasis/products',
+                    'img_url' => $image->superbig,
+                    'count' => 0,
+                ];
+
+                $data['product_image'][] = [
+                    'image' => $this->saveImg($data_img),
+                    'sort_order' => '',
+                ];
+            }
+        }
+
+        if (isset($data['product_image'])) {
+            $data['image'] = $data['product_image'][0]['image'];
+        }
+
+        $arr_product = $this->setProduct($data, $product);
+
+        $product_id = $this->model_catalog_product->addProduct($arr_product);
+
+        return $product_id;
+    }
+
+    /**
+     * @param $data
+     * @param $product_o
+     * @return array
+     * @throws Exception
+     */
+    public function setProduct($data, $product_o)
+    {
+        $this->load->model('catalog/product');
+        $this->load->model('localisation/language');
+        $languages = $this->model_localisation_language->getLanguages();
+
+        $product['product_description'] = [];
+
+        if (isset($data['product_description'])) {
+            $product['product_description'] = $data['product_description'];
+        } else {
+            foreach ($languages as $language) {
+                $product['product_description'][$language['language_id']] = [
+                    'name' => htmlspecialchars($product_o->full_name, ENT_QUOTES),
+                    'description' => htmlspecialchars('<p>' . $product_o->description . '</p>', ENT_QUOTES),
+                    'meta_title' => htmlspecialchars($product_o->full_name, ENT_QUOTES),
+                    'meta_description' => '',
+                    'meta_keyword' => '',
+                    'tag' => '',
+                ];
+            }
+        }
+
+        $product['model'] = isset($data['model']) ? $data['model'] : htmlspecialchars($product_o->article, ENT_QUOTES);
+        $product['sku'] = isset($data['sku']) ? $data['sku'] : '';
+        $product['upc'] = isset($data['upc']) ? $data['upc'] : '';
+        $product['ean'] = isset($data['ean']) ? $data['ean'] : '';
+        $product['jan'] = isset($data['jan']) ? $data['jan'] : '';
+        $product['isbn'] = isset($data['isbn']) ? $data['isbn'] : '';
+        $product['mpn'] = isset($data['mpn']) ? $data['mpn'] : '';
+        $product['location'] = isset($data['location']) ? $data['location'] : '';
+        $product['price'] = isset($data['price']) ? $data['price'] : $product_o->price;
+        $product['tax_class_id'] = isset($data['tax_class_id']) ? $data['tax_class_id'] : '0';
+        $product['quantity'] = isset($data['quantity']) ? $data['quantity'] : $product_o->total_stock;
+        $product['minimum'] = isset($data['minimum']) ? $data['minimum'] : 1;
+        $product['subtract'] = isset($data['subtract']) ? $data['subtract'] : 1;
+        $product['stock_status_id'] = isset($data['stock_status_id']) ? $data['stock_status_id'] : '0';
+        $product['shipping'] = isset($data['shipping']) ? $data['shipping'] : 1;
+        $product['date_available'] = isset($data['date_available']) ? $data['date_available'] : date('Y-m-d');
+        $product['length'] = isset($data['length']) ? $data['length'] : '';
+        $product['width'] = isset($data['width']) ? $data['width'] : '';
+        $product['height'] = isset($data['height']) ? $data['height'] : '';
+        $product['length_class_id'] = isset($data['length_class_id']) ? $data['length_class_id'] : 1;
+        $product['weight'] = isset($data['weight']) ? $data['weight'] : '';
+        $product['weight_class_id'] = isset($data['weight_class_id']) ? $data['weight_class_id'] : 1;
+        $product['status'] = isset($data['status']) ? $data['status'] : 1;
+        $product['sort_order'] = isset($data['sort_order']) ? $data['sort_order'] : 1;
+        $product['manufacturer'] = isset($data['manufacturer']) ? $data['manufacturer'] : '';
+        $product['manufacturer_id'] = isset($data['manufacturer_id']) ? $data['manufacturer_id'] : '0';
+        $product['category'] = isset($data['category']) ? $data['category'] : '';
+
+        if (isset($data['product_category'])) {
+            $product['product_category'] = $data['product_category'];
+        }
+
+        $product['filter'] = isset($data['filter']) ? $data['filter'] : '';
+        $product['product_store'] = isset($data['product_store']) ? $data['product_store'] : $this->getStores();
+        $product['download'] = isset($data['download']) ? $data['download'] : '';
+        $product['related'] = isset($data['related']) ? $data['related'] : '';
+
+        if (isset($data['product_attribute'])) {
+            $product['product_attribute'] = $data['product_attribute'];
+        }
+
+        $product['option'] = isset($data['option']) ? $data['option'] : '';
+
+        if (isset($data['product_option'])) {
+            $product['product_option'] = $data['product_option'];
+        }
+
+        $product['image'] = isset($data['image']) ? $data['image'] : '';
+
+        if (isset($data['product_image'])) {
+            $product['product_image'] = $data['product_image'];
+        }
+
+        $product['points'] = isset($data['points']) ? $data['points'] : '';
+        $product['product_reward'] = isset($data['product_reward']) ? $data['product_reward'] : [1 => ['points' => '']];
+        $product['product_seo_url'] = isset($data['product_seo_url']) ? $data['product_seo_url'] : $this->getSeoUrl($this->getStores(), $this->transliter($product_o->full_name));
+        $product['product_layout'] = isset($data['product_layout']) ? $data['product_layout'] : [0 => ''];
+
+        return $product;
     }
 
     /**
@@ -432,6 +725,164 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     }
 
     /**
+     * @param $option
+     * @return mixed
+     * @throws Exception
+     */
+    public function addOption($option)
+    {
+        $this->load->model('catalog/option');
+        $this->load->model('localisation/language');
+
+        $languages = $this->model_localisation_language->getLanguages();
+
+        $data['option_description'] = $this->toLanguagesArr($languages, 'name', $option['name']);
+        $data['type'] = 'radio';
+        $data['sort_order'] = '';
+        foreach ($option['value'] as $item) {
+            $data['option_value'][] = [
+                'option_value_id' => '',
+                'option_value_description' => $this->toLanguagesArr($languages, 'name', $item),
+                'image' => '',
+                'sort_order' => '',
+            ];
+        }
+
+        return $this->model_catalog_option->addOption($data);
+    }
+
+    /**
+     * @param $option_id
+     * @param $value
+     * @throws Exception
+     */
+    public function editOption($option_id, $value)
+    {
+        $this->load->model('catalog/option');
+        $this->load->model('localisation/language');
+
+        $data['option_description'] = $this->model_catalog_option->getOptionDescriptions($option_id);
+        $data['type'] = 'radio';
+        $data['sort_order'] = '';
+
+        $option_values = $this->model_catalog_option->getOptionValueDescriptions($option_id);
+
+        $languages = $this->model_localisation_language->getLanguages();
+
+        $option_values[] = [
+            'option_value_id' => '',
+            'option_value_description' => $this->toLanguagesArr($languages, 'name', $value),
+            'image' => '',
+            'sort_order' => '',
+        ];
+
+        $data['option_value'] = $option_values;
+
+        $this->model_catalog_option->editOption($option_id, $data);
+    }
+
+    /**
+     * @param $data
+     * @return mixed
+     */
+    public function setOption($data)
+    {
+        $option[0] = [
+            'product_option_id' => '',
+            'name' => $data['option']['name'],
+            'option_id' => $data['option']['option_id'],
+            'type' => $data['option']['type'],
+            'required' => 1,
+        ];
+
+        $option[0]['product_option_value'] = [];
+
+        foreach ($data['values'] as $value) {
+            $option[0]['product_option_value'][] = [
+                'option_value_id' => $value['option_value_id'],
+                'product_option_value_id' => '',
+                'quantity' => $value['quantity'],
+                'subtract' => 1,
+                'price_prefix' => '+',
+                'price' => '',
+                'points_prefix' => '+',
+                'points' => '',
+                'weight_prefix' => '+',
+                'weight' => '',
+            ];
+        }
+
+        return $option;
+    }
+
+    /**
+     * @param $option_name
+     * @param $value
+     * @param $quantity
+     * @return array
+     * @throws Exception
+     */
+    public function getOption($option_name, $value, $quantity)
+    {
+        $this->load->model('catalog/option');
+
+        $data['option'] = $this->model_catalog_option->getOptions(['filter_name' => $option_name]);
+
+        if (!$data['option']) {
+            $opt['name'] = $option_name;
+            $opt['value'][] = $value;
+            $data['option'] = $this->model_catalog_option->getOption($this->addOption($opt));
+        } else {
+            $data['option'] = $data['option'][0];
+        }
+        unset($opt);
+
+        $values = $this->getOptionValue($data['option']['option_id'], $value);
+
+        if ($values === false) {
+            $this->editOption($data['option']['option_id'], $value);
+
+            $values = $this->getOptionValue($data['option']['option_id'], $value);
+        }
+
+        $values['quantity'] = $quantity;
+
+        $data['values'][] = $values;
+
+        return $data;
+    }
+
+    /**
+     * @param $option_id
+     * @param $needle
+     * @return bool
+     * @throws Exception
+     */
+    public function getOptionValue($option_id, $needle)
+    {
+        $this->load->model('catalog/option');
+
+        $option_values = $this->model_catalog_option->getOptionValues($option_id);
+        $key = array_search($needle, array_column($option_values, 'name'));
+
+        return $key !== false ? $option_values[$key] : false;
+    }
+
+    /**
+     * @param        $product_id
+     * @param string $currency
+     * @return bool|mixed
+     */
+    public function getProductOasis($product_id, $currency = '')
+    {
+        $args['currency'] = (isset($currency) && $currency !== '') ? $currency : 'rub';
+        $args['fieldset'] = 'full';
+        $args['ids'] = $product_id;
+
+        return $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);
+    }
+
+    /**
      * @param $languages
      * @return mixed
      * @throws Exception
@@ -583,10 +1034,10 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     }
 
     /**
+     * @param $languages
      * @param $key
      * @param $value
      * @return array
-     * @throws Exception
      */
     public function toLanguagesArr($languages, $key, $value)
     {
@@ -639,6 +1090,10 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         $data['count'] === 0 ? $count = '' : $count = '-' . $data['count'];
 
+        if (empty($data['img_name']) || $data['img_name'] === '') {
+            $data['img_name'] = $extention['filename'];
+        }
+
         $img = $this->imgFolder($data['folder_name']) . $data['img_name'] . $count . '.' . $extention['extension'];
 
         if (!file_exists($img)) {
@@ -668,13 +1123,112 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         return $path;
     }
 
+    protected function transliter($str)
+    {
+        $arr_trans = [
+            'А' => 'A',
+            'Б' => 'B',
+            'В' => 'V',
+            'Г' => 'G',
+            'Д' => 'D',
+            'Е' => 'E',
+            'Ё' => 'E',
+            'Ж' => 'J',
+            'З' => 'Z',
+            'И' => 'I',
+            'Й' => 'Y',
+            'К' => 'K',
+            'Л' => 'L',
+            'М' => 'M',
+            'Н' => 'N',
+            'О' => 'O',
+            'П' => 'P',
+            'Р' => 'R',
+            'С' => 'S',
+            'Т' => 'T',
+            'У' => 'U',
+            'Ф' => 'F',
+            'Х' => 'H',
+            'Ц' => 'TS',
+            'Ч' => 'CH',
+            'Ш' => 'SH',
+            'Щ' => 'SCH',
+            'Ъ' => '',
+            'Ы' => 'YI',
+            'Ь' => '',
+            'Э' => 'E',
+            'Ю' => 'YU',
+            'Я' => 'YA',
+            'а' => 'a',
+            'б' => 'b',
+            'в' => 'v',
+            'г' => 'g',
+            'д' => 'd',
+            'е' => 'e',
+            'ё' => 'e',
+            'ж' => 'j',
+            'з' => 'z',
+            'и' => 'i',
+            'й' => 'y',
+            'к' => 'k',
+            'л' => 'l',
+            'м' => 'm',
+            'н' => 'n',
+            'о' => 'o',
+            'п' => 'p',
+            'р' => 'r',
+            'с' => 's',
+            'т' => 't',
+            'у' => 'u',
+            'ф' => 'f',
+            'х' => 'h',
+            'ц' => 'ts',
+            'ч' => 'ch',
+            'ш' => 'sh',
+            'щ' => 'sch',
+            'ъ' => 'y',
+            'ы' => 'yi',
+            'ь' => '',
+            'э' => 'e',
+            'ю' => 'yu',
+            'я' => 'ya',
+            '.' => '-',
+            ' ' => '-',
+            '?' => '-',
+            '/' => '-',
+            '\\' => '-',
+            '*' => '-',
+            ':' => '-',
+            '>' => '-',
+            '|' => '-',
+            '\'' => '',
+            '(' => '',
+            ')' => '',
+            '!' => '',
+            '@' => '',
+            '%' => '',
+            '`' => '',
+        ];
+        $str = str_replace(['-', '+', '.', '?', '/', '\\', '*', ':', '*', '|'], ' ', $str);
+        $str = htmlspecialchars_decode($str);
+        $str = strip_tags($str);
+        $pattern = '/[\w\s\d]+/u';
+        preg_match_all($pattern, $str, $result);
+        $str = implode('', $result[0]);
+        $str = preg_replace('/[\s]+/us', ' ', $str);
+        $str_trans = strtr($str, $arr_trans);
+        $str_trans = strtolower($str_trans);
+
+        return $str_trans;
+    }
+
     /**
      * @param $id
      * @param $msg
      */
     protected function saveToLog($id, $msg)
     {
-        $str = date('Y-m-d H:i:s') . ' | page_id=' . $id . ' | ' . $msg . PHP_EOL;
+        $str = date('Y-m-d H:i:s') . ' | product_id=' . $id . ' | ' . $msg . PHP_EOL;
         $filename = DIR_LOGS . 'oasiscatalog_log.txt';
         if (!file_exists($filename)) {
             $fp = fopen($filename, 'wb');

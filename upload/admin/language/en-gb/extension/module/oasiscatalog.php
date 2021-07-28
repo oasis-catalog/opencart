@@ -30,6 +30,9 @@ $_['text_remote_warehouse'] = 'Remote warehouse';
 $_['entry_status'] = 'Status';
 $_['entry_api_key'] = 'API key';
 
+//Variable
+$_['var_size'] = 'Size';
+
 // Button
 $_['button_import'] = 'Import';
 
