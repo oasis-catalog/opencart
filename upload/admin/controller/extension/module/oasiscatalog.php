@@ -356,6 +356,8 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         }
         unset($value);
 
+        $data['quantity'] = (int)$product_info['quantity'] + $product_oasis->total_stock;
+
         if ((float)$data['price'] < (float)$product_oasis->price) {
             $product_option[0]['product_option_value'][0]['price'] = (float)$product_oasis->price - (float)$data['price'];
         } elseif ((float)$data['price'] > (float)$product_oasis->price) {
