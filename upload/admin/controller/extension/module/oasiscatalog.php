@@ -10,7 +10,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     private const API_URL = 'https://api.oasiscatalog.com/';
     private const API_V4 = 'v4/';
     private const API_V3 = 'v3/';
-    private const API_CURRENCYES = 'currencies';
+    private const API_CURRENCIES = 'currencies';
     private const API_CATEGORIES = 'categories';
     private const API_PRODUCTS = 'products';
     private const API_BRANDS = 'brands';
@@ -86,6 +86,11 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 foreach ($currencies as $currency) {
                     $data['currencies'][$currency->code] = $currency->full_name;
                 }
+                unset($currency);
+
+                $this->load->model('localisation/tax_class');
+
+                $data['tax_classes'] = $this->model_localisation_tax_class->getTaxClasses();
 
                 $args['fields'] = self::API_CAT_FIELDS;
 
@@ -126,13 +131,12 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         if ($this->request->server['REQUEST_METHOD'] === 'POST') {
             $this->load->language(self::ROUTE);
 
-            $count = isset($this->request->post['count']) ? (int)$this->request->post['count'] : false;
+            $count = isset($this->request->post['count']) ? (int)$this->request->post['count'] : 0;
 
             $args = [
                 'currency' => isset($this->request->post['currency']) ? $this->request->post['currency'] : 'rub',
-                'no_vat' => isset($this->request->post['no_vat']) ? $this->request->post['no_vat'] : 0,
+                'no_vat' => isset($this->request->post['no_vat']) ? $this->request->post['no_vat'] : 1,
                 'fieldset' => 'full',
-                'limit' => 1,
             ];
 
             if (isset($this->request->post['not_on_order']) && $this->request->post['not_on_order'] !== '') {
@@ -167,43 +171,48 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 $args['category'] = implode(',', $this->request->post['category']);
             }
 
+            if (isset($this->request->post['tax_class']) && $this->request->post['tax_class'] !== '') {
+                $data['tax_class_id'] = (int)$this->request->post['tax_class'];
+            } else {
+                $data['tax_class_id'] = 0;
+            }
+
             try {
+                $msg = [
+                    'status' => '',
+                    'id' => '',
+                ];
+
                 $oasis_cat = $this->getCategoriesOasis(['fields' => self::API_CAT_FIELDS]);
 
-                //$args['category'] = 3071;
-                //$args['ids'] = '00000003555,00000008288';
+                if (isset($this->request->post['ids']) && $this->request->post['ids'] !== '') {
+                    $products = $this->request->post['ids'];
+                    $total_count = (isset($this->request->post['total_count'])) ? $this->request->post['total_count'] : 1;
+                } else {
+                    $product_obj = $this->getProductOasis(['fields' => 'id'] + $args);
 
-                $products = $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);
-                //d($this->curl_query(self::API_V4, self::API_PRODUCTS . '/00000003555'));
+                    $products = [];
+                    foreach ($product_obj as $item) {
+                        $products[]['id'] = $item->id;
+                    }
+                    unset($item, $product_obj);
+
+                    $total_count = count($products);
+                }
 
                 if ($products) {
-                    $data = [];
-                    foreach ($products as $product) {
-                        $categories = $product->categories;
-                        foreach ($categories as $category) {
-                            $data['product_category'][] = $this->addCategory($oasis_cat, $category);
-                        }
+                    $args['ids'] = array_shift($products);
+                    $product = $this->getProductOasis($args);
+                    $msg = $this->product($product[0], $oasis_cat, $args, $data);
 
-                        if (!is_null($product->brand_id)) {
-                            $data['manufacturer_id'] = $this->addBrand($this->getBrandsOasis(), $product->brand_id);
-                        } else {
-                            $data['manufacturer_id'] = 0;
-                        }
-
-                        $data['product_attributes'] = $this->addAttributes($product->attributes);
-                    }
-                    unset($product);
-
-                    // next
-
-                    $stat_insert = 'Товар добавлен.';
-                    $this->saveToLog(date('Ymdhis'), $stat_insert);
-                    $json['text'] = 'Ок!';
-                    $json['status'] = $stat_insert;
+                    $json['total_count'] = $total_count;
+                    $json['ids'] = $products;
+                    $json['text'] = $this->language->get('text_products_added');
+                    $json['status'] = $msg['status'];
                     $json['countcon'] = $count;
                 } else {
-                    $json['text'] = 'Error';
-                    $json['status'] = 'Нет страниц для обработки';
+                    $json['text'] = $this->language->get('text_error');
+                    $json['status'] = $this->language->get('text_no_products');
                 }
             } catch (\Exception $exception) {
                 $this->saveToLog($count, $exception->getMessage());
@@ -216,90 +225,47 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $this->response->setOutput(json_encode($json));
     }
 
-    public function getTestData()
-    {
-        $json = [];
-
-        $this->load->language(self::ROUTE);
-
-        $count = isset($this->request->post['count']) ? (int)$this->request->post['count'] : false;
-
-        $args = [
-            'currency' => 'rub',
-            'no_vat' => 0,
-            'fieldset' => 'full',
-        ];
-
-        $args['category'] = 3071;
-        //$args['ids'] = '00000003555,00000008288,00000003858';
-        //$args['ids'] = '00000003858';
-        //$args['fields'] = 'id,name,full_name,size,group_id';
-        $args['limit'] = 20;
-
-        try {
-            $msg = [
-                'status' => '',
-                'id' => '',
-            ];
-            $products = $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);
-            $oasis_cat = $this->getCategoriesOasis(['fields' => self::API_CAT_FIELDS]);
-
-            if ($products) {
-                $msg = [];
-
-                foreach ($products as $product) {
-                    $msg = $this->product($product, $oasis_cat);
-                }
-
-                $json['text'] = 'Ок!';
-                $json['status'] = $msg['status'];
-                $json['countcon'] = $count;
-            } else {
-                $json['text'] = 'Error';
-                $json['status'] = 'Нет страниц для обработки';
-            }
-        } catch (\Exception $exception) {
-            $this->saveToLog($count, $exception->getMessage());
-
-            return;
-        }
-
-        if ($this->request->server['REQUEST_METHOD'] == 'POST') {
-            // post data
-        }
-
-        $this->response->addHeader('Content-Type: application/json');
-        $this->response->setOutput(json_encode($json));
-    }
-
-    public function product($product, $oasis_cat)
+    /**
+     * @param       $product
+     * @param       $oasis_cat
+     * @param       $args
+     * @param array $data
+     * @return array
+     * @throws Exception
+     */
+    public function product($product, $oasis_cat, $args, $data = [])
     {
         $this->load->model('catalog/product');
 
-        $data = [];
         $msg = [];
 
         if (!is_null($product->parent_size_id)) {
             $this->load->language(self::ROUTE);
 
             $option = $this->getOption($this->language->get('var_size'), $product->size, $product->total_stock);
+
             $data['option'] = $option['option']['name'];
             $data['product_option'] = $this->setOption($option);
 
             if ($product->parent_size_id === $product->id) {
                 $msg = $this->checkProduct($data, $product, $oasis_cat);
             } else {
-                $parent_product = $this->getProductOasis($product->parent_size_id);
+                $args['ids'] = [
+                    'id' => $product->parent_size_id
+                ];
+
+                $parent_product = $this->getProductOasis($args);
+
                 $product_oc = $this->model_catalog_product->getProducts(['filter_model' => $parent_product[0]->article]);
 
                 if (!$product_oc) {
-                    $msg = $this->product($parent_product[0], $oasis_cat);
+                    $msg = $this->product($parent_product[0], $oasis_cat, $args, $data);
                     $product_oc[] = $this->model_catalog_product->getProduct($msg['id']);
                 }
 
                 $result = $this->editProduct($product_oc[0], $product, $data['product_option']);
 
-                $msg['status'] = $result ? 'Добавлен размер для товара.' : 'Размер уже имеется у товара.';
+                $msg['status'] = $result ?  $this->language->get('text_product_add_size') : $this->language->get('text_product_not_add_size');
                 $msg['id'] = $product_oc[0]['product_id'];
 
             }
@@ -314,15 +280,22 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         return $msg;
     }
 
+    /**
+     * @param $data
+     * @param $product
+     * @param $oasis_cat
+     * @return array
+     * @throws Exception
+     */
     public function checkProduct($data, $product, $oasis_cat)
     {
         $product_oc = $this->model_catalog_product->getProducts(['filter_model' => $product->article]);
 
         if (!$product_oc) {
-            $msg['status'] = 'Добавлен товар.';
+            $msg['status'] = $this->language->get('text_product_add');
             $msg['id'] = $this->addProduct($data, $product, $oasis_cat);
         } else {
-            $msg['status'] = 'Товар уже имеется в базе.';
+            $msg['status'] = $this->language->get('text_product_not_add');
             $msg['id'] = $product_oc[0]['product_id'];
         }
 
@@ -393,6 +366,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                     foreach ($product_attribute['product_attribute_description'] as $key => $value) {
                         $product_attribute_description[$key]['text'] = $value['text'] . ', ' . $product_oasis->size;
                     }
+                    unset($key, $value);
                 }
 
                 $data['product_attribute'][] = [
@@ -439,6 +413,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         foreach ($categories as $category) {
             $data['product_category'][] = $this->addCategory($oasis_cat, $category);
         }
+        unset($category);
 
         if (!is_null($product->brand_id)) {
             $data['manufacturer_id'] = $this->addBrand($this->getBrandsOasis(), $product->brand_id);
@@ -460,6 +435,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 ];
             }
         }
+        unset($image);
 
         if (isset($data['product_image'])) {
             $data['image'] = $data['product_image'][0]['image'];
@@ -499,6 +475,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                     'tag' => '',
                 ];
             }
+            unset($language);
         }
 
         $product['model'] = isset($data['model']) ? $data['model'] : htmlspecialchars($product_o->article, ENT_QUOTES);
@@ -661,6 +638,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                     foreach ($data[$key_attr]['product_attribute_description'] as $key => $value) {
                         $data[$key_attr]['product_attribute_description'][$key]['text'] .= ', ' . $attribute->value;
                     }
+                    unset($key, $value);
                 } else {
                     $data[] = [
                         'name' => $attr['name'],
@@ -679,8 +657,9 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                     'product_attribute_description' => $this->toLanguagesArr($languages, 'text', $attribute->value),
                 ];
             }
-            unset($attr, $key_attr, $key, $value, $data_attribute);
+            unset($attr, $key_attr, $data_attribute);
         }
+        unset($attribute);
 
         return $data;
     }
@@ -749,6 +728,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 'sort_order' => '',
             ];
         }
+        unset($item);
 
         return $this->model_catalog_option->addOption($data);
     }
@@ -813,6 +793,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 'weight' => '',
             ];
         }
+        unset($value);
 
         return $option;
     }
@@ -871,15 +852,14 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     }
 
     /**
-     * @param        $product_id
-     * @param string $currency
-     * @return bool|mixed
+     * @param $args
+     * @return bool|array
      */
-    public function getProductOasis($product_id, $currency = '')
+    public function getProductOasis($args)
     {
-        $args['currency'] = (isset($currency) && $currency !== '') ? $currency : 'rub';
-        $args['fieldset'] = 'full';
-        $args['ids'] = $product_id;
+        if (isset($args['ids']) && $args['ids'] !== '') {
+            $args['ids'] = $args['ids']['id'];
+        }
 
         return $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);
     }
@@ -907,6 +887,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                     'name' => $name,
                 ];
             }
+            unset($language);
 
             $data_attribute_group['sort_order'] = '';
 
@@ -940,7 +921,9 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 $data[$store][$language['language_id']] = $slug . $postfix;
                 $i++;
             }
+            unset($language);
         }
+        unset($store);
 
         return $data;
     }
@@ -961,6 +944,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             foreach ($stores as $store) {
                 $data[] = $store['store_id'];
             }
+            unset($store);
         } else {
             $data = [0];
         }
@@ -1003,7 +987,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      */
     public function getCurrenciesOasis($args = [])
     {
-        return $this->curl_query(self::API_V4, self::API_CURRENCYES, $args);
+        return $this->curl_query(self::API_V4, self::API_CURRENCIES, $args);
     }
 
     /**
@@ -1050,6 +1034,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 $key => $value,
             ];
         }
+        unset($language);
 
         return $data;
     }

@@ -25,6 +25,14 @@ $_['text_only_discount'] = 'Только со скидкой';
 $_['text_warehouse_moscow'] = 'На складе в Москве';
 $_['text_warehouse_europe'] = 'На складе в Европе';
 $_['text_remote_warehouse'] = 'На удаленном складе';
+$_['text_tax_class'] = 'Налог*';
+$_['text_products_added'] = 'Товары добавлены';
+$_['text_no_products'] = 'Нет товаров для добавления';
+$_['text_error'] = 'Ошибка';
+$_['text_product_add_size'] = 'Добавлен размер для товара';
+$_['text_product_not_add_size'] = 'Размер уже имеется у товара';
+$_['text_product_add'] = 'Товар добавлен';
+$_['text_product_not_add'] = 'Товар уже имеется в базе';
 
 // Entry
 $_['entry_status'] = 'Статус';

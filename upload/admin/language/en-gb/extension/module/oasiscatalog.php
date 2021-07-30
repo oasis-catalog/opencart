@@ -25,6 +25,14 @@ $_['text_only_discount'] = 'Only with a discount';
 $_['text_warehouse_moscow'] = 'Warehouse in Moscow';
 $_['text_warehouse_europe'] = 'Warehouse in Europe';
 $_['text_remote_warehouse'] = 'Remote warehouse';
+$_['text_tax_class'] = 'Tax Class*';
+$_['text_products_added'] = 'Products added';
+$_['text_no_products'] = 'There are no items to add';
+$_['text_error'] = 'Error';
+$_['text_product_add_size'] = 'Added product size';
+$_['text_product_not_add_size'] = 'The size is already on the item';
+$_['text_product_add'] = 'Product added';
+$_['text_product_not_add'] = 'The product is already in the database';
 
 // Entry
 $_['entry_status'] = 'Status';

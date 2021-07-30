@@ -25,7 +25,8 @@
             </div>
             <div class="panel-body">
                 <div id="w3" class="active progress-striped progress">
-                    <div class="progress-bar progress-bar-success progress-bar-striped" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0">0%<span class="sr-only">0% Complete</span></div>
+                    <div class="progress-bar progress-bar-success progress-bar-striped" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0">0%<span
+                                class="sr-only">0% Complete</span></div>
                 </div>
                 <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-module" class="form-horizontal">
                     <div role="tabs">
@@ -97,6 +98,23 @@
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <div class="form-group" id="tax-class" style="display: none;">
+                                                    <div class="col-sm-12">
+                                                        <label class="col-sm-6 control-label" for="input-tax-class">{{ text_tax_class }}</label>
+                                                        <div class="col-sm-6">
+                                                            <select name="tax_class_id" id="input-tax-class" class="form-control" required>
+                                                                <option value="0">{{ text_none }}</option>
+                                                                {% for tax_class in tax_classes %}
+                                                                    {% if tax_class.tax_class_id == tax_class_id %}
+                                                                        <option value="{{ tax_class.tax_class_id }}" selected="selected">{{ tax_class.title }}</option>
+                                                                    {% else %}
+                                                                        <option value="{{ tax_class.tax_class_id }}">{{ tax_class.title }}</option>
+                                                                    {% endif %}
+                                                                {% endfor %}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                                 <div class="form-group">
                                                     <div class="col-sm-12">
                                                         <label class="col-sm-6 control-label" for="input-not-on-order">{{ text_not_on_order }}</label>
@@ -133,15 +151,15 @@
                                                         <div class="col-sm-6"></div>
                                                         <div class="col-sm-6" id="rating-group">
                                                             <label class="col-sm-12">
-                                                                <input type="checkbox" name="rating" value="1" />
+                                                                <input type="checkbox" name="rating" value="1" id="input-rating-group"/>
                                                                 {{ text_only_new }}
                                                             </label>
                                                             <label class="col-sm-12">
-                                                                <input type="checkbox" name="rating" value="2" />
+                                                                <input type="checkbox" name="rating" value="2" id="input-rating-group"/>
                                                                 {{ text_only_hits }}
                                                             </label>
                                                             <label class="col-sm-12">
-                                                                <input type="checkbox" name="rating" value="3" />
+                                                                <input type="checkbox" name="rating" value="3" id="input-rating-group"/>
                                                                 {{ text_only_discount }}
                                                             </label>
                                                         </div>
@@ -152,15 +170,15 @@
                                                         <div class="col-sm-6"></div>
                                                         <div class="col-sm-6">
                                                             <label class="col-sm-12">
-                                                                <input type="checkbox" name="warehouse_moscow" value="1" />
+                                                                <input type="checkbox" name="warehouse_moscow" value="1" id="input-warehouse"/>
                                                                 {{ text_warehouse_moscow }}
                                                             </label>
                                                             <label class="col-sm-12">
-                                                                <input type="checkbox" name="warehouse_europe" value="1" />
+                                                                <input type="checkbox" name="warehouse_europe" value="1" id="input-warehouse"/>
                                                                 {{ text_warehouse_europe }}
                                                             </label>
                                                             <label class="col-sm-12">
-                                                                <input type="checkbox" name="remote_warehouse" value="1" />
+                                                                <input type="checkbox" name="remote_warehouse" value="1" id="input-warehouse"/>
                                                                 {{ text_remote_warehouse }}
                                                             </label>
                                                         </div>
@@ -193,10 +211,6 @@
                                             <div class="col-sm-12">
                                                 <div class="form-group">
                                                     <div class="col-sm-9 text-center">
-                                                        <button type="button" class="btn btn-primary" id="button-start-import" data-loading-text="{{ text_loading }}"
-                                                                data-complete-text="{{ text_complete }}"><i
-                                                                    class="fa fa-copy"></i> {{ button_import }}</button>
-
                                                         <button type="button" class="btn btn-success" id="start-import"><i
                                                                     class="fa fa-copy"></i> {{ button_import }}</button>
                                                     </div>
@@ -211,48 +225,20 @@
                 </form>
             </div>
         </div>
-    </div>
-    <div class="row">
-        <div class="text-center">
-            <small>{{ text_mail_to }}</small>
+        <div class="row">
+            <div class="text-center">
+                <small>{{ text_mail_to }}</small>
+            </div>
         </div>
     </div>
 </div>
 <script type="text/javascript"><!--
-    $(function () {
-
-        var timer;
-
-        $('#button-start-import').on('click', function (e) {
-            clearTimeout(timer);
-
-            $('#tab-import > .alert').remove();
-            var $button = $(this).button('loading');
-
-            $.post(
-                'index.php?route=extension/module/oasiscatalog/getTestData&user_token={{ user_token }}', $('[name="currency"]').serialize(), function (response) {
-                    if (response['error']) {
-                        $button.button('reset');
-
-                        $('#tab-import').prepend('<div class="alert alert-danger" role="alert">' + response['error'] + '</div>');
-                    }
-
-                    if (response['success']) {
-                        $button.button('complete');
-
-                        $('#tab-import').prepend('<div class="alert alert-success" role="alert">' + response['success'] + '</div>');
-
-                        timer = setTimeout(function () {
-                            $button.button('reset');
-                        }, 10 * 1000);
-                    }
-                }, 'json');
-        });
-    });
 
     $("#start-import").click(StartImport);
 
     var count = 0;
+    var ids = [];
+    var total_count = 1;
 
     function StartImport(e) {
         e.preventDefault();
@@ -263,8 +249,18 @@
         var price_from = $('[name="price-from"]').val();
         var price_to = $('[name="price-to"]').val();
 
+        var tax_class = 0;
+
+        if (no_vat) {
+            var tax_class = $('#input-tax-class option:selected').val();
+            if (tax_class == 0) {
+                alert('Необходимо выбрать налог!');
+                return false;
+            }
+        }
+
         var rating = null;
-        $('[name="rating"]:checked').each(function(){
+        $('[name="rating"]:checked').each(function () {
             rating = $(this).val();
         });
 
@@ -273,13 +269,15 @@
         var remote_warehouse = $('[name="remote_warehouse"]').is(":checked") ? 1 : null;
 
         var category = [];
-        $('[id="categories"]:checked').each(function() {
+        $('[id="categories"]:checked').each(function () {
             category.push($(this).val());
         });
 
-        var y = 1;
+        [].forEach.call(document.querySelectorAll('input, select'), function (el) {
+            el.setAttribute('disabled', 'disabled');
+        });
 
-        if ( count < y ) {
+        if (count < total_count) {
             $.ajax({
                 url: 'index.php?route=extension/module/oasiscatalog/import&user_token={{ user_token }}',
                 type: 'post',
@@ -296,30 +294,53 @@
                     warehouse_europe: warehouse_europe,
                     remote_warehouse: remote_warehouse,
                     category: category,
-                    count: count
+                    count: count,
+                    ids: ids,
+                    tax_class: tax_class,
+                    total_count: total_count
                 },
                 success: function (response) {
                     if (response['countcon']) {
                         count = response['countcon'];
                     }
+                    if (response['ids']) {
+                        ids = response['ids'];
+                    }
+                    if (response['total_count']) {
+                        total_count = response['total_count'];
+                    }
                     count++;
-                    var value = (count * 100 / y).toFixed(2) + '%';
+                    var value = (count * 100 / total_count).toFixed(2) + '%';
                     $('.progress-bar').width(value).html(value);
-                    $('#resp').html(response['status'] + ' ' + response['countcon']);
+                    $('#resp').html(response['status'] + ' ' + count);
 
-                    if (response['status'] && count < y) {
+                    if (response['status'] && count < total_count) {
                         StartImport(e);
                     } else {
+                        [].forEach.call(document.querySelectorAll('input, select'), function (el) {
+                            el.removeAttribute('disabled');
+                        });
+                        count = 0;
+                        ids = [];
+                        total_count = 1;
                         alert(response['text']);
                     }
                 }
             });
         } else {
-            alert('Error limit');
+            alert('Error');
         }
     }
 
-    $('#rating-group input:checkbox').click(function(){
+    $('#input-no-vat').click(function () {
+        if ($(this).is(':checked')) {
+            $('#tax-class').show(100);
+        } else {
+            $('#tax-class').hide(100);
+        }
+    });
+
+    $('#rating-group input:checkbox').click(function () {
         if ($(this).is(':checked')) {
             $('#rating-group input:checkbox').not(this).prop('checked', false);
         }
