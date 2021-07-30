@@ -273,6 +273,11 @@
             category.push($(this).val());
         });
 
+        if (category == '') {
+            alert('Необходимо выбрать одну или несколько категорий!');
+            return false;
+        }
+
         [].forEach.call(document.querySelectorAll('input, select'), function (el) {
             el.setAttribute('disabled', 'disabled');
         });
