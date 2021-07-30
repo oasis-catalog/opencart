@@ -468,7 +468,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             foreach ($languages as $language) {
                 $product['product_description'][$language['language_id']] = [
                     'name' => htmlspecialchars($product_o->full_name, ENT_QUOTES),
-                    'description' => htmlspecialchars('<p>' . $product_o->description . '</p>', ENT_QUOTES),
+                    'description' => htmlspecialchars('<p>' . nl2br($product_o->description) . '</p>', ENT_QUOTES),
                     'meta_title' => htmlspecialchars($product_o->full_name, ENT_QUOTES),
                     'meta_description' => '',
                     'meta_keyword' => '',
