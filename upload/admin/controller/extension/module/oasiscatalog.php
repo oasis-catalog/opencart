@@ -178,10 +178,6 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             }
 
             try {
-                $msg = [
-                    'status' => '',
-                    'id' => '',
-                ];
 
                 $oasis_cat = $this->getCategoriesOasis(['fields' => self::API_CAT_FIELDS]);
 
@@ -251,7 +247,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 $msg = $this->checkProduct($data, $product, $oasis_cat);
             } else {
                 $args['ids'] = [
-                    'id' => $product->parent_size_id
+                    'id' => $product->parent_size_id,
                 ];
 
                 $parent_product = $this->getProductOasis($args);
@@ -265,7 +261,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
                 $result = $this->editProduct($product_oc[0], $product, $data['product_option']);
 
-                $msg['status'] = $result ?  $this->language->get('text_product_add_size') : $this->language->get('text_product_not_add_size');
+                $msg['status'] = $result ? $this->language->get('text_product_add_size') : $this->language->get('text_product_not_add_size');
                 $msg['id'] = $product_oc[0]['product_id'];
 
             }
