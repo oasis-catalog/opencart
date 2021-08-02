@@ -252,17 +252,22 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
                 $parent_product = $this->getProductOasis($args);
 
-                $product_oc = $this->model_catalog_product->getProducts(['filter_model' => $parent_product[0]->article]);
+                if (!empty($parent_product)) {
+                    $product_oc = $this->model_catalog_product->getProducts(['filter_model' => $parent_product[0]->article]);
 
-                if (!$product_oc) {
-                    $msg = $this->product($parent_product[0], $oasis_cat, $args, $data);
-                    $product_oc[] = $this->model_catalog_product->getProduct($msg['id']);
+                    if (!$product_oc) {
+                        $msg = $this->product($parent_product[0], $oasis_cat, $args, $data);
+                        $product_oc[] = $this->model_catalog_product->getProduct($msg['id']);
+                    }
+
+                    $result = $this->editProduct($product_oc[0], $product, $data['product_option']);
+
+                    $msg['status'] = $result ? $this->language->get('text_product_add_size') : $this->language->get('text_product_not_add_size');
+                    $msg['id'] = $product_oc[0]['product_id'];
+                } else {
+                    $msg['status'] = 'Error. Не найдено товаров с таким ID или артикулом';
+                    $msg['id'] = $product->parent_size_id;
                 }
-
-                $result = $this->editProduct($product_oc[0], $product, $data['product_option']);
-
-                $msg['status'] = $result ? $this->language->get('text_product_add_size') : $this->language->get('text_product_not_add_size');
-                $msg['id'] = $product_oc[0]['product_id'];
 
             }
             unset($product_oc, $result);
