@@ -37,6 +37,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
             $post_data['oasiscatalog_status'] = isset($this->request->post['oasiscatalog_status']) ? $this->request->post['oasiscatalog_status'] : 0;
             $post_data['oasiscatalog_api_key'] = isset($this->request->post['oasiscatalog_api_key']) ? $this->request->post['oasiscatalog_api_key'] : '';
+            $post_data['oasiscatalog_user_id'] = isset($this->request->post['oasiscatalog_user_id']) ? $this->request->post['oasiscatalog_user_id'] : '';
 
             $this->model_setting_setting->editSetting('oasiscatalog', $post_data);
 
@@ -75,6 +76,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $data['status'] = $this->config->get('oasiscatalog_status');
         $data['api_key'] = API_KEY;
         $data['api_key_status'] = false;
+        $data['user_id'] = $this->config->get('oasiscatalog_user_id');
 
         if ($data['api_key']) {
             $currencies = $this->getCurrenciesOasis();

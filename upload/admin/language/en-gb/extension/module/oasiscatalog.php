@@ -33,10 +33,16 @@ $_['text_product_add_size'] = 'Added product size';
 $_['text_product_not_add_size'] = 'The size is already on the item';
 $_['text_product_add'] = 'Product added';
 $_['text_product_not_add'] = 'The product is already in the database';
+$_['text_order_number'] = 'OasisCatalog order number';
+$_['text_order_created'] = 'Date created';
+$_['text_order_status_text'] = 'Status text';
+$_['text_orders_link'] = 'Go to Oasiscatalog';
 
 // Entry
 $_['entry_status'] = 'Status';
 $_['entry_api_key'] = 'API key';
+$_['entry_user_id'] = 'User ID';
+$_['entry_order'] = 'Order data in OasisCatalog';
 
 //Variable
 $_['var_size'] = 'Size';

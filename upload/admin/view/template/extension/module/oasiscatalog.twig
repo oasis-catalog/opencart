@@ -66,6 +66,12 @@
                                         <input type="text" name="oasiscatalog_api_key" value="{{ api_key }}" class="form-control" id="input-api-key" width="100%">
                                     </div>
                                 </div>
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label" for="input-user-id">{{ entry_user_id }}</label>
+                                    <div class="col-sm-9">
+                                        <input type="text" name="oasiscatalog_user_id" value="{{ user_id }}" class="form-control" id="input-user-id" width="100%">
+                                    </div>
+                                </div>
                             </div>
                             {% if api_key_status %}
                                 <div id="tab-import" class="tab-pane">

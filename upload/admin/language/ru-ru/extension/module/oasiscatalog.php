@@ -33,10 +33,16 @@ $_['text_product_add_size'] = 'Добавлен размер для товара
 $_['text_product_not_add_size'] = 'Размер уже имеется у товара';
 $_['text_product_add'] = 'Товар добавлен';
 $_['text_product_not_add'] = 'Товар уже имеется в базе';
+$_['text_order_number'] = 'Номер заказа в OasisCatalog';
+$_['text_order_created'] = 'Дата создания';
+$_['text_order_status_text'] = 'Статус заказа';
+$_['text_orders_link'] = 'Перейти в Oasiscatalog';
 
 // Entry
 $_['entry_status'] = 'Статус';
 $_['entry_api_key'] = 'API ключ';
+$_['entry_user_id'] = 'ИД пользователя';
+$_['entry_order'] = 'Данные заказа в OasisCatalog';
 
 //Variable
 $_['var_size'] = 'Размер';
