@@ -37,6 +37,9 @@ $_['text_order_number'] = 'Номер заказа в OasisCatalog';
 $_['text_order_created'] = 'Дата создания';
 $_['text_order_status_text'] = 'Статус заказа';
 $_['text_orders_link'] = 'Перейти в Oasiscatalog';
+$_['text_not_order'] = 'Нет данных! Заказ еще не отправлен в Oasiscatalog';
+$_['text_not_order_user_id'] = 'У Вас нет UserId, укажите его в настройках модуля Oasiscatalog!';
+$_['text_order_send'] = 'Выгрузить заказ в Oasiscatalog';
 
 // Entry
 $_['entry_status'] = 'Статус';
@@ -50,7 +53,11 @@ $_['var_size'] = 'Размер';
 // Button
 $_['button_import'] = 'Импорт';
 
+// Success
+$_['success_order_import'] = 'Заказ успешно выгружен в Oasiscatalog';
+
 // Error
+$_['error_order_import'] = 'Ошибка выгрузки заказа';
 $_['error_api_access'] = 'Предупреждение! У Вас нет API ключа, получите на сайте <a href="https://oasiscatalog.com/" target="_blank">oasiscatalog.com</a> API ключ и укажите его в настройках модуля!';
 $_['error_api_key'] = 'Предупреждение! Ваш API ключ не действительный, получите новый API ключ на сайте <a href="https://oasiscatalog.com/" target="_blank">oasiscatalog.com</a> и укажите его в настройках модуля!';
 $_['error_permission'] = 'Предупреждение! У Вас нет прав для управления этим модулем!';

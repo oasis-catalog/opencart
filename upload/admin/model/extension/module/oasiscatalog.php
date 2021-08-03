@@ -3,6 +3,19 @@
 class ModelExtensionModuleOasiscatalog extends Model
 {
 
+    public function addOrder($data)
+    {
+        if (isset($data['order_id']) && isset($data['queue_id'])) {
+            $this->db->query("
+                INSERT INTO `" . DB_PREFIX . "oasis_order` (order_id, queue_id) 
+                SELECT * FROM (SELECT '" . (int)$data['order_id'] . "', '" . (int)$data['queue_id'] . "') AS tmp
+                WHERE NOT EXISTS (
+                    SELECT order_id FROM `" . DB_PREFIX . "oasis_order` WHERE order_id = '" . (int)$data['order_id'] . "'
+                ) LIMIT 1
+            ");
+        }
+    }
+
     public function getOrder($order_id)
     {
         $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "oasis_order WHERE order_id = '" . (int)$order_id . "'");
@@ -25,28 +38,28 @@ class ModelExtensionModuleOasiscatalog extends Model
         $queries = [];
         $queries[] = "
             CREATE TABLE `" . DB_PREFIX . "oasis_order` (
-                `order_id` INT(11) NOT NULL,
-                `queue_id` INT(11) NOT NULL,
-                PRIMARY KEY (`order_id`)
+    `order_id` INT(11) NOT null,
+                `queue_id` INT(11) NOT null,
+                PRIMARY KEY(`order_id`)
             )
-            COLLATE='utf8_general_ci'
-            ENGINE=MyISAM
-            ROW_FORMAT=FIXED
+            COLLATE = 'utf8_general_ci'
+            ENGINE = MyISAM
+            ROW_FORMAT = FIXED
 		";
         $queries[] = "
             CREATE TABLE `" . DB_PREFIX . "oasis_product` (
-                `product_id` INT(11) NOT NULL,
-                `product_id_oasis` INT(11) NOT NULL,
-                `article_oasis` INT(11) NOT NULL,
-                PRIMARY KEY (`product_id_oasis`)
+    `product_id` INT(11) NOT null,
+                `product_id_oasis` INT(11) NOT null,
+                `article_oasis` INT(11) NOT null,
+                PRIMARY KEY(`product_id_oasis`)
             )
-            COLLATE='utf8_general_ci'
-            ENGINE=MyISAM
-            ROW_FORMAT=FIXED
+            COLLATE = 'utf8_general_ci'
+            ENGINE = MyISAM
+            ROW_FORMAT = FIXED
 		";
 
-        foreach( $queries as $query ){
-            $this->db->query( $query );
+        foreach ($queries as $query) {
+            $this->db->query($query);
         }
 
         return true;
