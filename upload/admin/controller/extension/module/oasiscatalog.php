@@ -1238,6 +1238,9 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         ];
 
         $this->model_setting_setting->editSetting('oasiscatalog', $settings);
+
+        $this->load->model('extension/module/oasiscatalog');
+        $this->model_extension_module_oasiscatalog->install();
     }
 
     /**
