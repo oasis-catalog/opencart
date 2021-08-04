@@ -48,7 +48,7 @@ $_['entry_user_id'] = 'User ID';
 $_['entry_order'] = 'Order data in OasisCatalog';
 
 //Variable
-$_['var_size'] = 'Size';
+$_['var_size'] = 'Размер';
 
 // Button
 $_['button_import'] = 'Import';

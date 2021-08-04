@@ -35,9 +35,9 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
 
-            $post_data['oasiscatalog_status'] = isset($this->request->post['oasiscatalog_status']) ? $this->request->post['oasiscatalog_status'] : 0;
-            $post_data['oasiscatalog_api_key'] = isset($this->request->post['oasiscatalog_api_key']) ? $this->request->post['oasiscatalog_api_key'] : '';
-            $post_data['oasiscatalog_user_id'] = isset($this->request->post['oasiscatalog_user_id']) ? $this->request->post['oasiscatalog_user_id'] : '';
+            $post_data['oasiscatalog_status'] = $this->request->post['oasiscatalog_status'] ?? 0;
+            $post_data['oasiscatalog_api_key'] = $this->request->post['oasiscatalog_api_key'] ?? '';
+            $post_data['oasiscatalog_user_id'] = $this->request->post['oasiscatalog_user_id'] ?? '';
 
             $this->model_setting_setting->editSetting('oasiscatalog', $post_data);
 
@@ -80,7 +80,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         if ($data['api_key']) {
             $currencies = $this->getCurrenciesOasis();
-            $data['api_key_status'] = $currencies ? true : false;
+            $data['api_key_status'] = (bool)$currencies;
 
             if ($data['api_key_status']) {
                 $data['currencies'] = [];
@@ -136,8 +136,8 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             $count = isset($this->request->post['count']) ? (int)$this->request->post['count'] : 0;
 
             $args = [
-                'currency' => isset($this->request->post['currency']) ? $this->request->post['currency'] : 'rub',
-                'no_vat' => isset($this->request->post['no_vat']) ? $this->request->post['no_vat'] : 1,
+                'currency' => $this->request->post['currency'] ?? 'rub',
+                'no_vat' => $this->request->post['no_vat'] ?? 1,
                 'fieldset' => 'full',
             ];
 
@@ -231,7 +231,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @return array
      * @throws Exception
      */
-    public function product($product, $oasis_cat, $args, $data = [])
+    public function product($product, $oasis_cat, $args, array $data = []): array
     {
         $this->load->model('catalog/product');
 
@@ -290,7 +290,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @return array
      * @throws Exception
      */
-    public function checkProduct($data, $product, $oasis_cat)
+    public function checkProduct($data, $product, $oasis_cat): array
     {
         $product_oc = $this->model_catalog_product->getProducts(['filter_model' => $product->article]);
 
@@ -312,7 +312,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @return bool
      * @throws Exception
      */
-    public function editProduct($product_info, $product_oasis, $product_option)
+    public function editProduct($product_info, $product_oasis, $product_option): bool
     {
         $this->load->language(self::ROUTE);
         $this->load->model('catalog/product');
@@ -407,7 +407,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @return integer
      * @throws Exception
      */
-    public function addProduct($data, $product, $oasis_cat)
+    public function addProduct($data, $product, $oasis_cat): int
     {
         $this->load->model('catalog/product');
 
@@ -446,9 +446,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         $arr_product = $this->setProduct($data, $product);
 
-        $product_id = $this->model_catalog_product->addProduct($arr_product);
-
-        return $product_id;
+        return $this->model_catalog_product->addProduct($arr_product);
     }
 
     /**
@@ -457,7 +455,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @return array
      * @throws Exception
      */
-    public function setProduct($data, $product_o)
+    public function setProduct($data, $product_o): array
     {
         $this->load->model('catalog/product');
         $this->load->model('localisation/language');
@@ -481,63 +479,63 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             unset($language);
         }
 
-        $product['model'] = isset($data['model']) ? $data['model'] : htmlspecialchars($product_o->article, ENT_QUOTES);
-        $product['sku'] = isset($data['sku']) ? $data['sku'] : '';
-        $product['upc'] = isset($data['upc']) ? $data['upc'] : '';
-        $product['ean'] = isset($data['ean']) ? $data['ean'] : '';
-        $product['jan'] = isset($data['jan']) ? $data['jan'] : '';
-        $product['isbn'] = isset($data['isbn']) ? $data['isbn'] : '';
-        $product['mpn'] = isset($data['mpn']) ? $data['mpn'] : '';
-        $product['location'] = isset($data['location']) ? $data['location'] : '';
-        $product['price'] = isset($data['price']) ? $data['price'] : $product_o->price;
-        $product['tax_class_id'] = isset($data['tax_class_id']) ? $data['tax_class_id'] : '0';
-        $product['quantity'] = isset($data['quantity']) ? $data['quantity'] : $product_o->total_stock;
-        $product['minimum'] = isset($data['minimum']) ? $data['minimum'] : 1;
-        $product['subtract'] = isset($data['subtract']) ? $data['subtract'] : 1;
-        $product['stock_status_id'] = isset($data['stock_status_id']) ? $data['stock_status_id'] : '0';
-        $product['shipping'] = isset($data['shipping']) ? $data['shipping'] : 1;
-        $product['date_available'] = isset($data['date_available']) ? $data['date_available'] : date('Y-m-d');
-        $product['length'] = isset($data['length']) ? $data['length'] : '';
-        $product['width'] = isset($data['width']) ? $data['width'] : '';
-        $product['height'] = isset($data['height']) ? $data['height'] : '';
-        $product['length_class_id'] = isset($data['length_class_id']) ? $data['length_class_id'] : 1;
-        $product['weight'] = isset($data['weight']) ? $data['weight'] : '';
-        $product['weight_class_id'] = isset($data['weight_class_id']) ? $data['weight_class_id'] : 1;
-        $product['status'] = isset($data['status']) ? $data['status'] : 1;
-        $product['sort_order'] = isset($data['sort_order']) ? $data['sort_order'] : 1;
-        $product['manufacturer'] = isset($data['manufacturer']) ? $data['manufacturer'] : '';
-        $product['manufacturer_id'] = isset($data['manufacturer_id']) ? $data['manufacturer_id'] : '0';
-        $product['category'] = isset($data['category']) ? $data['category'] : '';
+        $product['model'] = $data['model'] ?? htmlspecialchars($product_o->article, ENT_QUOTES);
+        $product['sku'] = $data['sku'] ?? '';
+        $product['upc'] = $data['upc'] ?? '';
+        $product['ean'] = $data['ean'] ?? '';
+        $product['jan'] = $data['jan'] ?? '';
+        $product['isbn'] = $data['isbn'] ?? '';
+        $product['mpn'] = $data['mpn'] ?? '';
+        $product['location'] = $data['location'] ?? '';
+        $product['price'] = $data['price'] ?? $product_o->price;
+        $product['tax_class_id'] = $data['tax_class_id'] ?? '0';
+        $product['quantity'] = $data['quantity'] ?? $product_o->total_stock;
+        $product['minimum'] = $data['minimum'] ?? 1;
+        $product['subtract'] = $data['subtract'] ?? 1;
+        $product['stock_status_id'] = $data['stock_status_id'] ?? '0';
+        $product['shipping'] = $data['shipping'] ?? 1;
+        $product['date_available'] = $data['date_available'] ?? date('Y-m-d');
+        $product['length'] = $data['length'] ?? '';
+        $product['width'] = $data['width'] ?? '';
+        $product['height'] = $data['height'] ?? '';
+        $product['length_class_id'] = $data['length_class_id'] ?? 1;
+        $product['weight'] = $data['weight'] ?? '';
+        $product['weight_class_id'] = $data['weight_class_id'] ?? 1;
+        $product['status'] = $data['status'] ?? 1;
+        $product['sort_order'] = $data['sort_order'] ?? 1;
+        $product['manufacturer'] = $data['manufacturer'] ?? '';
+        $product['manufacturer_id'] = $data['manufacturer_id'] ?? '0';
+        $product['category'] = $data['category'] ?? '';
 
         if (isset($data['product_category'])) {
             $product['product_category'] = $data['product_category'];
         }
 
-        $product['filter'] = isset($data['filter']) ? $data['filter'] : '';
-        $product['product_store'] = isset($data['product_store']) ? $data['product_store'] : $this->getStores();
-        $product['download'] = isset($data['download']) ? $data['download'] : '';
-        $product['related'] = isset($data['related']) ? $data['related'] : '';
+        $product['filter'] = $data['filter'] ?? '';
+        $product['product_store'] = $data['product_store'] ?? $this->getStores();
+        $product['download'] = $data['download'] ?? '';
+        $product['related'] = $data['related'] ?? '';
 
         if (isset($data['product_attribute'])) {
             $product['product_attribute'] = $data['product_attribute'];
         }
 
-        $product['option'] = isset($data['option']) ? $data['option'] : '';
+        $product['option'] = $data['option'] ?? '';
 
         if (isset($data['product_option'])) {
             $product['product_option'] = $data['product_option'];
         }
 
-        $product['image'] = isset($data['image']) ? $data['image'] : '';
+        $product['image'] = $data['image'] ?? '';
 
         if (isset($data['product_image'])) {
             $product['product_image'] = $data['product_image'];
         }
 
-        $product['points'] = isset($data['points']) ? $data['points'] : '';
-        $product['product_reward'] = isset($data['product_reward']) ? $data['product_reward'] : [1 => ['points' => '']];
-        $product['product_seo_url'] = isset($data['product_seo_url']) ? $data['product_seo_url'] : $this->getSeoUrl($this->getStores(), $this->transliter($product_o->full_name));
-        $product['product_layout'] = isset($data['product_layout']) ? $data['product_layout'] : [0 => ''];
+        $product['points'] = $data['points'] ?? '';
+        $product['product_reward'] = $data['product_reward'] ?? [1 => ['points' => '']];
+        $product['product_seo_url'] = $data['product_seo_url'] ?? $this->getSeoUrl($this->getStores(), $this->transliter($product_o->full_name));
+        $product['product_layout'] = $data['product_layout'] ?? [0 => ''];
 
         return $product;
     }
@@ -545,7 +543,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     /**
      * @param $categories
      * @param $id
-     * @return bool
+     * @return mixed
      * @throws Exception
      */
     public function addCategory($categories, $id)
@@ -604,9 +602,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         $this->load->model('catalog/category');
 
-        $category_id = $this->model_catalog_category->addCategory($data);
-
-        return $category_id;
+        return $this->model_catalog_category->addCategory($data);
     }
 
     /**
@@ -614,7 +610,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @return array
      * @throws Exception
      */
-    public function addAttributes($attributes)
+    public function addAttributes($attributes): array
     {
         $this->load->model('catalog/attribute');
         $this->load->model('localisation/language');
@@ -703,9 +699,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         $this->load->model('catalog/manufacturer');
 
-        $manufacturer_id = $this->model_catalog_manufacturer->addManufacturer($data);
-
-        return $manufacturer_id;
+        return $this->model_catalog_manufacturer->addManufacturer($data);
     }
 
     /**
@@ -768,9 +762,9 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
     /**
      * @param $data
-     * @return mixed
+     * @return array
      */
-    public function setOption($data)
+    public function setOption($data): array
     {
         $option[0] = [
             'product_option_id' => '',
@@ -808,7 +802,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @return array
      * @throws Exception
      */
-    public function getOption($option_name, $value, $quantity)
+    public function getOption($option_name, $value, $quantity): array
     {
         $this->load->model('catalog/option');
 
@@ -841,7 +835,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     /**
      * @param $option_id
      * @param $needle
-     * @return bool
+     * @return array|bool
      * @throws Exception
      */
     public function getOptionValue($option_id, $needle)
@@ -906,7 +900,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @return array
      * @throws Exception
      */
-    public function getSeoUrl($stores, $slug)
+    public function getSeoUrl($stores, $slug): array
     {
         $data = [];
 
@@ -935,7 +929,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @return array
      * @throws Exception
      */
-    public function getStores()
+    public function getStores(): array
     {
         $data = [];
 
@@ -957,7 +951,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
     /**
      * @param $seo_url
-     * @return bool
+     * @return integer|bool
      * @throws Exception
      */
     public function getIdByKeyword($seo_url)
@@ -979,7 +973,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @param array $args
      * @return bool|mixed
      */
-    public function getCategoriesOasis($args = [])
+    public function getCategoriesOasis(array $args = [])
     {
         return $this->curl_query(self::API_V4, self::API_CATEGORIES, $args);
     }
@@ -988,7 +982,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @param array $args
      * @return bool|mixed
      */
-    public function getCurrenciesOasis($args = [])
+    public function getCurrenciesOasis(array $args = [])
     {
         return $this->curl_query(self::API_V4, self::API_CURRENCIES, $args);
     }
@@ -997,7 +991,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @param array $args
      * @return bool|mixed
      */
-    public function getBrandsOasis($args = [])
+    public function getBrandsOasis(array $args = [])
     {
         return $this->curl_query(self::API_V3, self::API_BRANDS, $args);
     }
@@ -1017,9 +1011,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             return false;
         }
 
-        $result = array_shift($neededObject);
-
-        return $result;
+        return array_shift($neededObject);
     }
 
     /**
@@ -1028,7 +1020,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @param $value
      * @return array
      */
-    public function toLanguagesArr($languages, $key, $value)
+    public function toLanguagesArr($languages, $key, $value): array
     {
         $data = [];
 
@@ -1048,7 +1040,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      * @param array $args
      * @return bool|mixed
      */
-    public function curl_query($version, $type, $args = [])
+    public function curl_query($version, $type, array $args = [])
     {
         $args_pref = [
             'key' => API_KEY,
@@ -1072,28 +1064,26 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      */
     protected function saveImg($data)
     {
-        $extention = pathinfo($data['img_url']);
+        $ext = pathinfo($data['img_url']);
 
-        if ($extention['extension'] === 'tif') {
+        if ($ext['extension'] === 'tif') {
             return false;
         }
 
         $data['count'] === 0 ? $count = '' : $count = '-' . $data['count'];
 
         if (empty($data['img_name']) || $data['img_name'] === '') {
-            $data['img_name'] = $extention['filename'];
+            $data['img_name'] = $ext['filename'];
         }
 
-        $img = $this->imgFolder($data['folder_name']) . $data['img_name'] . $count . '.' . $extention['extension'];
+        $img = $this->imgFolder($data['folder_name']) . $data['img_name'] . $count . '.' . $ext['extension'];
 
         if (!file_exists($img)) {
             $pic = file_get_contents($data['img_url']);
             file_put_contents($img, $pic);
         }
 
-        $result = $data['folder_name'] . '/' . $data['img_name'] . $count . '.' . $extention['extension'];
-
-        return $result;
+        return $data['folder_name'] . '/' . $data['img_name'] . $count . '.' . $ext['extension'];
     }
 
     /**
@@ -1113,7 +1103,11 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         return $path;
     }
 
-    protected function transliter($str)
+    /**
+     * @param $str
+     * @return string
+     */
+    protected function transliter($str): string
     {
         $arr_trans = [
             'А' => 'A',
@@ -1207,9 +1201,8 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $str = implode('', $result[0]);
         $str = preg_replace('/[\s]+/us', ' ', $str);
         $str_trans = strtr($str, $arr_trans);
-        $str_trans = strtolower($str_trans);
 
-        return $str_trans;
+        return strtolower($str_trans);
     }
 
     /**
@@ -1256,7 +1249,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     /**
      * @return bool
      */
-    protected function validate()
+    protected function validate(): bool
     {
         if (!$this->user->hasPermission('modify', self::ROUTE)) {
             $this->error['warning'] = $this->language->get('error_permission');
