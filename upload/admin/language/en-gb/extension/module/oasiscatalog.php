@@ -55,9 +55,11 @@ $_['button_import'] = 'Import';
 
 // Success
 $_['success_order_import'] = 'Order successfully uploaded to Oasiscatalog';
+$_['success_product_edit'] = 'Product updated';
 
 // Error
 $_['error_order_import'] = 'Order unloading error!';
+$_['error_product_edit'] = 'Product update error';
 $_['error_api_access'] = 'A warning! You do not have an API key, get the API key on the <a href="https://oasiscatalog.com/" target="_blank">website oasiscatalog.com</a> and specify it in the module settings!';
 $_['error_api_key'] = 'A warning! Your API key is not valid, get a new API key on the website <a href="https://oasiscatalog.com/" target="_blank">oasiscatalog.com</a> and specify it in the module settings!';
 $_['error_permission'] = 'Warning: You do not have permission to modify!';

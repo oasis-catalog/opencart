@@ -55,9 +55,11 @@ $_['button_import'] = 'Импорт';
 
 // Success
 $_['success_order_import'] = 'Заказ успешно выгружен в Oasiscatalog';
+$_['success_product_edit'] = 'Товар обновлен';
 
 // Error
 $_['error_order_import'] = 'Ошибка выгрузки заказа';
+$_['error_product_edit'] = 'Ошибка обновления товара';
 $_['error_api_access'] = 'Предупреждение! У Вас нет API ключа, получите на сайте <a href="https://oasiscatalog.com/" target="_blank">oasiscatalog.com</a> API ключ и укажите его в настройках модуля!';
 $_['error_api_key'] = 'Предупреждение! Ваш API ключ не действительный, получите новый API ключ на сайте <a href="https://oasiscatalog.com/" target="_blank">oasiscatalog.com</a> и укажите его в настройках модуля!';
 $_['error_permission'] = 'Предупреждение! У Вас нет прав для управления этим модулем!';
