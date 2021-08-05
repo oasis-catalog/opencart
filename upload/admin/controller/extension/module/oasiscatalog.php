@@ -7,6 +7,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 {
     private $error = [];
     private $cat_oasis = [];
+    private $products = [];
     private const ROUTE = 'extension/module/oasiscatalog';
     private const API_URL = 'https://api.oasiscatalog.com/';
     private const API_V4 = 'v4/';
@@ -354,7 +355,6 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             }
         }
 
-        $data['quantity'] = (int)$product_info['quantity'] + $product_oasis->total_stock;
         $data['product_description'] = $this->model_catalog_product->getProductDescriptions($product_info['product_id']);
 
         $manufacturer_info = $this->model_catalog_manufacturer->getManufacturer($product_info['manufacturer_id']);
@@ -484,7 +484,6 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $product['location'] = $data['location'] ?? '';
         $product['price'] = $data['price'] ?? $product_o->price;
         $product['tax_class_id'] = $data['tax_class_id'] ?? '0';
-        $product['quantity'] = $data['quantity'] ?? $product_o->total_stock;
         $product['minimum'] = $data['minimum'] ?? 1;
         $product['subtract'] = $data['subtract'] ?? 1;
         $product['stock_status_id'] = $data['stock_status_id'] ?? '0';
@@ -516,6 +515,9 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         if (isset($data['product_option'])) {
             $product['product_option'] = $data['product_option'];
+            $product['quantity'] = array_sum(array_column($data['product_option'][0]['product_option_value'], 'quantity'));
+        } else {
+            $product['quantity'] = $product_o->total_stock;
         }
 
         $product['image'] = $data['image'] ?? '';
