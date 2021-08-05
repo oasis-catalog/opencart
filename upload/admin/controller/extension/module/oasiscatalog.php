@@ -248,7 +248,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
             if ($product->parent_size_id === $product->id) {
                 $msg = $this->checkProduct($data, $product);
-            } else {
+            } elseif ($product->total_stock > 0) {
                 $args['ids'] = [
                     'id' => $product->parent_size_id,
                 ];
@@ -271,9 +271,11 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                     $msg['status'] = 'Error. Не найдено товаров с таким ID или артикулом';
                     $msg['id'] = $product->parent_size_id;
                 }
-
+                unset($product_oc, $result);
+            } else {
+                $msg['status'] = $this->language->get('text_product_not_add_size_quantity');
+                $msg['id'] = $product->id;
             }
-            unset($product_oc, $result);
 
         } else {
             $msg = $this->checkProduct($data, $product);
@@ -495,7 +497,6 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $product['length_class_id'] = $data['length_class_id'] ?? 1;
         $product['weight'] = $data['weight'] ?? '';
         $product['weight_class_id'] = $data['weight_class_id'] ?? 1;
-        $product['status'] = $data['status'] ?? 1;
         $product['sort_order'] = $data['sort_order'] ?? 1;
         $product['manufacturer'] = $data['manufacturer'] ?? '';
         $product['manufacturer_id'] = $data['manufacturer_id'] ?? '0';
@@ -518,6 +519,12 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             $product['quantity'] = array_sum(array_column($data['product_option'][0]['product_option_value'], 'quantity'));
         } else {
             $product['quantity'] = $product_o->total_stock;
+        }
+
+        if ($product['quantity'] > 0 || $product_o->rating === 5) {
+            $product['status'] = 1;
+        } else {
+            $product['status'] = 0;
         }
 
         $product['image'] = $data['image'] ?? '';

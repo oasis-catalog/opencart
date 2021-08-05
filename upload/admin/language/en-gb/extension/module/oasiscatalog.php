@@ -31,6 +31,7 @@ $_['text_no_products'] = 'There are no items to add';
 $_['text_error'] = 'Error';
 $_['text_product_add_size'] = 'Added product size';
 $_['text_product_not_add_size'] = 'The size is already on the item';
+$_['text_product_not_add_size_quantity'] = 'Size not added, number 0';
 $_['text_product_add'] = 'Product added';
 $_['text_product_not_add'] = 'The product is already in the database';
 $_['text_order_number'] = 'OasisCatalog order number';

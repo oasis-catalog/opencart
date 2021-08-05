@@ -31,6 +31,7 @@ $_['text_no_products'] = 'Нет товаров для добавления';
 $_['text_error'] = 'Ошибка';
 $_['text_product_add_size'] = 'Добавлен размер для товара';
 $_['text_product_not_add_size'] = 'Размер уже имеется у товара';
+$_['text_product_not_add_size_quantity'] = 'Размер не добавлен, количетсво 0';
 $_['text_product_add'] = 'Товар добавлен';
 $_['text_product_not_add'] = 'Товар уже имеется в базе';
 $_['text_order_number'] = 'Номер заказа в OasisCatalog';
