@@ -297,7 +297,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             $msg['status'] = $this->language->get('text_product_add');
             $msg['id'] = $this->addProduct($data, $product);
         } else {
-            $result = $this->editProduct($product_oc[0], $product);
+            $result = $this->editProduct($product_oc[0], $product, $data['product_option']);
 
             $msg['status'] = $result ? $this->language->get('success_product_edit') : $this->language->get('error_product_edit');
             $msg['id'] = $product_oc[0]['product_id'];
@@ -327,12 +327,6 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $data['product_option'] = $this->model_catalog_product->getProductOptions($product_info['product_id']);
 
         if ($product_option) {
-            foreach ($data['product_option'][0]['product_option_value'] as $value) {
-                if ($value['option_value_id'] === $product_option[0]['product_option_value'][0]['option_value_id']) {
-                    return false;
-                }
-            }
-            unset($value);
 
             if ((float)$data['price'] < (float)$product_oasis->price) {
                 $product_option[0]['product_option_value'][0]['price'] = (float)$product_oasis->price - (float)$data['price'];
@@ -341,7 +335,23 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 $product_option[0]['product_option_value'][0]['price_prefix'] = '-';
             }
 
-            $data['product_option'][0]['product_option_value'][] = $product_option[0]['product_option_value'][0];
+            if ($data['product_option']) {
+                foreach ($data['product_option'][0]['product_option_value'] as $key => $value) {
+                    if ($value['option_value_id'] === $product_option[0]['product_option_value'][0]['option_value_id']) {
+                        $data['product_option'][0]['product_option_value'][$key]['quantity'] = $product_option[0]['product_option_value'][0]['quantity'];
+                    }
+                }
+                unset($key, $value);
+
+                $key_option = array_search($product_option[0]['product_option_value'][0]['option_value_id'], array_column($data['product_option'][0]['product_option_value'], 'option_value_id'));
+
+                if (!$key_option) {
+                    $data['product_option'][0]['product_option_value'][] = $product_option[0]['product_option_value'][0];
+                }
+                unset($key_option);
+            } else {
+                $data['product_option'] = $product_option;
+            }
         }
 
         $data['quantity'] = (int)$product_info['quantity'] + $product_oasis->total_stock;
@@ -364,34 +374,6 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             }
         }
         unset($categories, $category, $category_oc);
-
-        $product_attributes = $this->model_catalog_product->getProductAttributes($product_info['product_id']);
-
-        $var_size = $this->language->get('var_size');
-
-        foreach ($product_attributes as $product_attribute) {
-            $attribute_info = $this->model_catalog_attribute->getAttribute($product_attribute['attribute_id']);
-
-            if ($attribute_info) {
-
-                $product_attribute_description = $product_attribute['product_attribute_description'];
-
-                if ($attribute_info['name'] == $var_size) {
-                    $product_attribute_description = [];
-                    foreach ($product_attribute['product_attribute_description'] as $key => $value) {
-                        $product_attribute_description[$key]['text'] = $value['text'] . ', ' . $product_oasis->size;
-                    }
-                    unset($key, $value);
-                }
-
-                $data['product_attribute'][] = [
-                    'name' => $attribute_info['name'],
-                    'attribute_id' => $product_attribute['attribute_id'],
-                    'product_attribute_description' => $product_attribute_description,
-                ];
-            }
-        }
-        unset($product_attribute);
 
         $images = $this->model_catalog_product->getProductImages($product_info['product_id']);
 
@@ -436,8 +418,6 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         if (!is_null($product->brand_id)) {
             $data['manufacturer_id'] = $this->addBrand($this->getBrandsOasis(), $product->brand_id);
         }
-
-        $data['product_attribute'] = $this->addAttributes($product->attributes);
 
         foreach ($product->images as $image) {
             if (isset($image->superbig)) {
@@ -530,10 +510,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $product['product_store'] = $data['product_store'] ?? $this->getStores();
         $product['download'] = $data['download'] ?? '';
         $product['related'] = $data['related'] ?? '';
-
-        if (isset($data['product_attribute'])) {
-            $product['product_attribute'] = $data['product_attribute'];
-        }
+        $product['product_attribute'] = $this->addAttributes($product_o->attributes);
 
         $product['option'] = $data['option'] ?? '';
 
@@ -650,51 +627,54 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      */
     public function addAttributes($attributes): array
     {
+        $this->load->language(self::ROUTE);
         $this->load->model('catalog/attribute');
         $this->load->model('localisation/language');
 
         $languages = $this->model_localisation_language->getLanguages();
-
+        $var_size = $this->language->get('var_size');
         $data = [];
 
         foreach ($attributes as $attribute) {
             $name = $attribute->name;
-            $neededAttribute = [];
+            if ($name !== $var_size) {
+                $neededAttribute = [];
 
-            $attributes_store = $this->model_catalog_attribute->getAttributes();
-            $neededAttribute = array_filter($attributes_store, function ($e) use ($name) {
-                return $e['name'] == $name;
-            });
+                $attributes_store = $this->model_catalog_attribute->getAttributes();
+                $neededAttribute = array_filter($attributes_store, function ($e) use ($name) {
+                    return $e['name'] == $name;
+                });
 
-            if ($neededAttribute) {
-                $attr = array_shift($neededAttribute);
+                if ($neededAttribute) {
+                    $attr = array_shift($neededAttribute);
 
-                $key_attr = array_search($attr['name'], array_column($data, 'name'));
+                    $key_attr = array_search($attr['name'], array_column($data, 'name'));
 
-                if ($key_attr) {
-                    foreach ($data[$key_attr]['product_attribute_description'] as $key => $value) {
-                        $data[$key_attr]['product_attribute_description'][$key]['text'] .= ', ' . $attribute->value;
+                    if ($key_attr) {
+                        foreach ($data[$key_attr]['product_attribute_description'] as $key => $value) {
+                            $data[$key_attr]['product_attribute_description'][$key]['text'] .= ', ' . $attribute->value;
+                        }
+                        unset($key, $value);
+                    } else {
+                        $data[] = [
+                            'name' => $attr['name'],
+                            'attribute_id' => $attr['attribute_id'],
+                            'product_attribute_description' => $this->toLanguagesArr($languages, 'text', $attribute->value),
+                        ];
                     }
-                    unset($key, $value);
                 } else {
+                    $data_attribute['attribute_description'] = $this->toLanguagesArr($languages, 'name', $attribute->name);
+                    $data_attribute['attribute_group_id'] = $this->getAttributeGroupId($languages);
+                    $data_attribute['sort_order'] = '';
+
                     $data[] = [
-                        'name' => $attr['name'],
-                        'attribute_id' => $attr['attribute_id'],
+                        'name' => $attribute->name,
+                        'attribute_id' => $this->model_catalog_attribute->addAttribute($data_attribute),
                         'product_attribute_description' => $this->toLanguagesArr($languages, 'text', $attribute->value),
                     ];
                 }
-            } else {
-                $data_attribute['attribute_description'] = $this->toLanguagesArr($languages, 'name', $attribute->name);
-                $data_attribute['attribute_group_id'] = $this->getAttributeGroupId($languages);
-                $data_attribute['sort_order'] = '';
-
-                $data[] = [
-                    'name' => $attribute->name,
-                    'attribute_id' => $this->model_catalog_attribute->addAttribute($data_attribute),
-                    'product_attribute_description' => $this->toLanguagesArr($languages, 'text', $attribute->value),
-                ];
+                unset($attr, $key_attr, $data_attribute);
             }
-            unset($attr, $key_attr, $data_attribute);
         }
         unset($attribute);
 
