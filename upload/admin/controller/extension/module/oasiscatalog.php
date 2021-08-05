@@ -346,7 +346,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
                 $key_option = array_search($product_option[0]['product_option_value'][0]['option_value_id'], array_column($data['product_option'][0]['product_option_value'], 'option_value_id'));
 
-                if (!$key_option) {
+                if ($key_option === false) {
                     $data['product_option'][0]['product_option_value'][] = $product_option[0]['product_option_value'][0];
                 }
                 unset($key_option);
