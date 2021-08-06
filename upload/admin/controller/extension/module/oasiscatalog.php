@@ -253,13 +253,22 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                     'id' => $product->parent_size_id,
                 ];
 
-                $parent_product = $this->getProductOasis($args);
+                $searchId = $product->parent_size_id;
+                $neededProduct = array_filter($this->products, function ($e) use ($searchId) {
+                    return $e->id == $searchId;
+                });
+                if ($neededProduct) {
+                    $parent_product = array_shift($neededProduct);
+                } else {
+                    $parent_product_oasis = $this->getProductOasis($args);
+                    $parent_product = $parent_product_oasis ? array_shift($parent_product_oasis) : false;
+                }
 
                 if (!empty($parent_product)) {
-                    $product_oc = $this->model_catalog_product->getProducts(['filter_model' => $parent_product[0]->article]);
+                    $product_oc = $this->model_catalog_product->getProducts(['filter_model' => $parent_product->article]);
 
                     if (!$product_oc) {
-                        $msg = $this->product($parent_product[0], $args, $data);
+                        $msg = $this->product($parent_product, $args, $data);
                         $product_oc[] = $this->model_catalog_product->getProduct($msg['id']);
                     }
 
@@ -271,7 +280,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                     $msg['status'] = 'Error. Не найдено товаров с таким ID или артикулом';
                     $msg['id'] = $product->parent_size_id;
                 }
-                unset($product_oc, $result);
+                unset($product_oc, $result, $parent_product_oasis, $neededProduct, $searchId);
             } else {
                 $msg['status'] = $this->language->get('text_product_not_add_size_quantity');
                 $msg['id'] = $product->id;
@@ -356,8 +365,6 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 $data['product_option'] = $product_option;
             }
         }
-
-        $data['product_description'] = $this->model_catalog_product->getProductDescriptions($product_info['product_id']);
 
         $manufacturer_info = $this->model_catalog_manufacturer->getManufacturer($product_info['manufacturer_id']);
 
@@ -460,21 +467,17 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         $product['product_description'] = [];
 
-        if (isset($data['product_description'])) {
-            $product['product_description'] = $data['product_description'];
-        } else {
-            foreach ($languages as $language) {
-                $product['product_description'][$language['language_id']] = [
-                    'name' => htmlspecialchars($product_o->full_name, ENT_QUOTES),
-                    'description' => htmlspecialchars('<p>' . nl2br($product_o->description) . '</p>', ENT_QUOTES),
-                    'meta_title' => htmlspecialchars($product_o->full_name, ENT_QUOTES),
-                    'meta_description' => '',
-                    'meta_keyword' => '',
-                    'tag' => '',
-                ];
-            }
-            unset($language);
+        foreach ($languages as $language) {
+            $product['product_description'][$language['language_id']] = [
+                'name' => htmlspecialchars($product_o->full_name, ENT_QUOTES),
+                'description' => htmlspecialchars('<p>' . nl2br($product_o->description) . '</p>', ENT_QUOTES),
+                'meta_title' => htmlspecialchars($product_o->full_name, ENT_QUOTES),
+                'meta_description' => '',
+                'meta_keyword' => '',
+                'tag' => '',
+            ];
         }
+        unset($language);
 
         $product['model'] = $data['model'] ?? htmlspecialchars($product_o->article, ENT_QUOTES);
         $product['sku'] = $data['sku'] ?? '';
@@ -484,7 +487,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $product['isbn'] = $data['isbn'] ?? '';
         $product['mpn'] = $data['mpn'] ?? '';
         $product['location'] = $data['location'] ?? '';
-        $product['price'] = $data['price'] ?? $product_o->price;
+        $product['price'] = $product_o->price;
         $product['tax_class_id'] = $data['tax_class_id'] ?? '0';
         $product['minimum'] = $data['minimum'] ?? 1;
         $product['subtract'] = $data['subtract'] ?? 1;
