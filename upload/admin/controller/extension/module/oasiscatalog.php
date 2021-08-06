@@ -248,7 +248,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
             if ($product->parent_size_id === $product->id) {
                 $msg = $this->checkProduct($data, $product);
-            } elseif ($product->total_stock > 0) {
+            } elseif ($product->total_stock > 0 || $product->rating === 5) {
                 $args['ids'] = [
                     'id' => $product->parent_size_id,
                 ];
@@ -309,7 +309,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             $msg['status'] = $this->language->get('text_product_add');
             $msg['id'] = $this->addProduct($data, $product);
         } else {
-            $result = $this->editProduct($product_oc[0], $product, $data['product_option']);
+            $result = $this->editProduct($product_oc[0], $product, $data['product_option'] ?? []);
 
             $msg['status'] = $result ? $this->language->get('success_product_edit') : $this->language->get('error_product_edit');
             $msg['id'] = $product_oc[0]['product_id'];
@@ -327,6 +327,14 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      */
     public function editProduct($product_info, $product_oasis, array $product_option = []): bool
     {
+        $this->load->model('extension/module/oasiscatalog');
+
+        $date_modified = $this->model_extension_module_oasiscatalog->getProductDateModified($product_oasis->id);
+
+        if ($date_modified && strtotime($product_oasis->updated_at) < strtotime($date_modified['option_date_modified'])) {
+            return false;
+        }
+
         $this->load->language(self::ROUTE);
         $this->load->model('catalog/product');
         $this->load->model('catalog/manufacturer');
@@ -397,8 +405,25 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         unset($key, $value);
 
         $arr_product = $this->setProduct($data, $product_oasis);
-
         $this->model_catalog_product->editProduct($product_info['product_id'], $arr_product);
+
+        if (empty($date_modified)) {
+            if ($product_option) {
+                $product_option_value = $this->model_extension_module_oasiscatalog->getProductOptionValueId($product_info['product_id'], $product_option[0]['product_option_value'][0]['option_value_id']);
+            }
+            $args = [
+                'product_id_oasis' => $product_oasis->id,
+                'option_value_id' => $product_option_value['product_option_value_id'] ?? '',
+                'product_id' => $product_info['product_id'],
+            ];
+            $this->model_extension_module_oasiscatalog->addProduct($args);
+        } else {
+            $args = [
+                'option_value_id' => $product_option_value['product_option_value_id'] ?? '',
+                'product_id' => $product_info['product_id'],
+            ];
+            $this->model_extension_module_oasiscatalog->editProduct($product_oasis->id, $args);
+        }
 
         return true;
     }
@@ -517,7 +542,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         $product['option'] = $data['option'] ?? '';
 
-        if (isset($data['product_option'])) {
+        if (!empty($data['product_option'])) {
             $product['product_option'] = $data['product_option'];
             $product['quantity'] = array_sum(array_column($data['product_option'][0]['product_option_value'], 'quantity'));
         } else {
