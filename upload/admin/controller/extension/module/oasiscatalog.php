@@ -407,10 +407,11 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $arr_product = $this->setProduct($data, $product_oasis);
         $this->model_catalog_product->editProduct($product_info['product_id'], $arr_product);
 
+        if ($product_option) {
+            $product_option_value = $this->model_extension_module_oasiscatalog->getProductOptionValueId($product_info['product_id'], $product_option[0]['product_option_value'][0]['option_value_id']);
+        }
+
         if (empty($date_modified)) {
-            if ($product_option) {
-                $product_option_value = $this->model_extension_module_oasiscatalog->getProductOptionValueId($product_info['product_id'], $product_option[0]['product_option_value'][0]['option_value_id']);
-            }
             $args = [
                 'product_id_oasis' => $product_oasis->id,
                 'option_value_id' => $product_option_value['product_option_value_id'] ?? '',
