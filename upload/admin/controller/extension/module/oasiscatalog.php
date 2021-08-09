@@ -404,6 +404,18 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         }
         unset($key, $value);
 
+        $product_data = $this->model_extension_module_oasiscatalog->getProduct($product_oasis->group_id);
+        if ($product_data) {
+            $product_related = $this->model_catalog_product->getProductRelated($product_data['product_id']);
+
+            if ($product_oasis->group_id === $product_oasis->id) {
+                $data['product_related'] = $product_related;
+            } else {
+                $product_related[] = $product_data['product_id'];
+                $data['product_related'] = $product_related;
+            }
+        }
+
         $arr_product = $this->setProduct($data, $product_oasis);
         $this->model_catalog_product->editProduct($product_info['product_id'], $arr_product);
 
@@ -539,6 +551,11 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $product['product_store'] = $data['product_store'] ?? $this->getStores();
         $product['download'] = $data['download'] ?? '';
         $product['related'] = $data['related'] ?? '';
+
+        if (!empty($data['product_related'])) {
+            $product['product_related'] = $data['product_related'];
+        }
+
         $product['product_attribute'] = $this->addAttributes($product_o->attributes);
 
         $product['option'] = $data['option'] ?? '';
