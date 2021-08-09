@@ -24,10 +24,6 @@
                 <h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_edit }}</h3>
             </div>
             <div class="panel-body">
-                <div id="w3" class="active progress-striped progress">
-                    <div class="progress-bar progress-bar-success progress-bar-striped" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0">0%<span
-                                class="sr-only">0% Complete</span></div>
-                </div>
                 <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-module" class="form-horizontal">
                     <div role="tabs">
                         <div class="tab-content">
@@ -243,8 +239,6 @@
     $("#start-import").click(StartImport);
 
     var count = 0;
-    var ids = [];
-    var total_count = 1;
 
     function StartImport(e) {
         e.preventDefault();
@@ -270,16 +264,16 @@
             category.push($(this).val());
         });
 
-        if (category == '') {
+        /*if (category == '') {
             alert('Необходимо выбрать одну или несколько категорий!');
             return false;
-        }
+        }*/
 
         [].forEach.call(document.querySelectorAll('input, select'), function (el) {
             el.setAttribute('disabled', 'disabled');
         });
 
-        if (count < total_count) {
+        if (count < 1) {
             $.ajax({
                 url: 'index.php?route=extension/module/oasiscatalog/import&user_token={{ user_token }}',
                 type: 'post',
@@ -297,34 +291,23 @@
                     remote_warehouse: remote_warehouse,
                     category: category,
                     count: count,
-                    ids: ids,
-                    tax_class: tax_class,
-                    total_count: total_count
+                    tax_class: tax_class
                 },
                 success: function (response) {
                     if (response['countcon']) {
                         count = response['countcon'];
                     }
-                    if (response['ids']) {
-                        ids = response['ids'];
-                    }
-                    if (response['total_count']) {
-                        total_count = response['total_count'];
-                    }
                     count++;
-                    var value = (count * 100 / total_count).toFixed(2) + '%';
-                    $('.progress-bar').width(value).html(value);
+
                     $('#resp').html(response['status'] + ' ' + count);
 
-                    if (response['status'] && count < total_count) {
+                    if (response['status'] && count < 1) {
                         StartImport(e);
                     } else {
                         [].forEach.call(document.querySelectorAll('input, select'), function (el) {
                             el.removeAttribute('disabled');
                         });
                         count = 0;
-                        ids = [];
-                        total_count = 1;
                         alert(response['text']);
                     }
                 }

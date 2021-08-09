@@ -182,41 +182,22 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             }
 
             try {
-
+                $this->products = $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);
                 $this->cat_oasis = $this->getCategoriesOasis(['fields' => self::API_CAT_FIELDS]);
 
-                if (isset($this->request->post['ids']) && $this->request->post['ids'] !== '') {
-                    $products = $this->request->post['ids'];
-                    $total_count = (isset($this->request->post['total_count'])) ? $this->request->post['total_count'] : 1;
-                } else {
-                    $product_obj = $this->getProductOasis(['fields' => 'id'] + $args);
-
-                    $products = [];
-                    foreach ($product_obj as $item) {
-                        $products[]['id'] = $item->id;
+                if ($this->products) {
+                    foreach ($this->products as $product) {
+                        set_time_limit(10);
+                        $msg = $this->product($product, $args, $data);
                     }
-                    unset($item, $product_obj);
-
-                    $total_count = count($products);
-                }
-
-                if ($products) {
-                    $args['ids'] = array_shift($products);
-                    $product = $this->getProductOasis($args);
-                    $msg = $this->product($product[0], $args, $data);
-
-                    $json['total_count'] = $total_count;
-                    $json['ids'] = $products;
+                    $json['countcon'] = $count;
                     $json['text'] = $this->language->get('text_products_added');
                     $json['status'] = $msg['status'];
-                    $json['countcon'] = $count;
                 } else {
                     $json['text'] = $this->language->get('text_error');
                     $json['status'] = $this->language->get('text_no_products');
                 }
             } catch (\Exception $exception) {
-                $this->saveToLog($count, $exception->getMessage());
-
                 return;
             }
         }
@@ -408,12 +389,10 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         if ($product_data) {
             $product_related = $this->model_catalog_product->getProductRelated($product_data['product_id']);
 
-            if ($product_oasis->group_id === $product_oasis->id) {
-                $data['product_related'] = $product_related;
-            } else {
+            if ($product_oasis->group_id !== $product_oasis->id && $product_info['product_id'] !== $product_data['product_id']) {
                 $product_related[] = $product_data['product_id'];
-                $data['product_related'] = $product_related;
             }
+            $data['product_related'] = $product_related;
         }
 
         $arr_product = $this->setProduct($data, $product_oasis);
