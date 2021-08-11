@@ -41,12 +41,17 @@ $_['text_orders_link'] = 'Перейти в Oasiscatalog';
 $_['text_not_order'] = 'Нет данных! Заказ еще не отправлен в Oasiscatalog';
 $_['text_not_order_user_id'] = 'У Вас нет UserId, укажите его в настройках модуля Oasiscatalog!';
 $_['text_order_send'] = 'Выгрузить заказ в Oasiscatalog';
+$_['text_cron_product'] = 'Задания Cron - это запланированные задания, которые запускаются периодически.<br /> 
+Для регулярного обновления товаров Вам нужно настроить задачу Cron на запуск 1 раз в сутки.';
+$_['text_cron_stock'] = 'Для регулярного обновления остатков Вам нужно настроить задачу Cron на запуск каждые 30 минут.';
 
 // Entry
 $_['entry_status'] = 'Статус';
 $_['entry_api_key'] = 'API ключ';
 $_['entry_user_id'] = 'ИД пользователя';
 $_['entry_order'] = 'Данные заказа в OasisCatalog';
+$_['entry_cron_product'] = 'Cron - импорт/обновление товаров (1 раз в стуки)';
+$_['entry_cron_stock'] = 'Cron - обновление остатков (каждые 30 минут)';
 
 //Variable
 $_['var_size'] = 'Размер';

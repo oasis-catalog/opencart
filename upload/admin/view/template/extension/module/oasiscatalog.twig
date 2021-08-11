@@ -68,6 +68,22 @@
                                         <input type="text" name="oasiscatalog_user_id" value="{{ user_id }}" class="form-control" id="input-user-id" width="100%">
                                     </div>
                                 </div>
+                                {% if api_key_status %}
+                                    <div class="form-group">
+                                        <p class="text-center">{{ text_cron_product }}</p>
+                                        <label class="col-sm-3 control-label" for="input-cron-product">{{ entry_cron_product }}</label>
+                                        <div class="col-sm-9">
+                                            <textarea rows="1" readonly id="input-cron-product" class="form-control">{{ cron_product }}</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <p class="text-center">{{ text_cron_stock }}</p>
+                                        <label class="col-sm-3 control-label" for="input-cron-stock">{{ entry_cron_stock }}</label>
+                                        <div class="col-sm-9">
+                                            <textarea rows="1" readonly id="input-cron-stock" class="form-control">{{ cron_stock }}</textarea>
+                                        </div>
+                                    </div>
+                                {% endif %}
                             </div>
                             {% if api_key_status %}
                                 <div id="tab-import" class="tab-pane">
@@ -238,8 +254,6 @@
 
     $("#start-import").click(StartImport);
 
-    var count = 0;
-
     function StartImport(e) {
         e.preventDefault();
 
@@ -264,57 +278,35 @@
             category.push($(this).val());
         });
 
-        /*if (category == '') {
-            alert('Необходимо выбрать одну или несколько категорий!');
-            return false;
-        }*/
-
         [].forEach.call(document.querySelectorAll('input, select'), function (el) {
             el.setAttribute('disabled', 'disabled');
         });
 
-        if (count < 1) {
-            $.ajax({
-                url: 'index.php?route=extension/module/oasiscatalog/import&user_token={{ user_token }}',
-                type: 'post',
-                dataType: 'json',
-                cache: false,
-                data: {
-                    currency: currency,
-                    no_vat: no_vat,
-                    not_on_order: not_on_order,
-                    price_from: price_from,
-                    price_to: price_to,
-                    rating: rating,
-                    warehouse_moscow: warehouse_moscow,
-                    warehouse_europe: warehouse_europe,
-                    remote_warehouse: remote_warehouse,
-                    category: category,
-                    count: count,
-                    tax_class: tax_class
-                },
-                success: function (response) {
-                    if (response['countcon']) {
-                        count = response['countcon'];
-                    }
-                    count++;
-
-                    $('#resp').html(response['status'] + ' ' + count);
-
-                    if (response['status'] && count < 1) {
-                        StartImport(e);
-                    } else {
-                        [].forEach.call(document.querySelectorAll('input, select'), function (el) {
-                            el.removeAttribute('disabled');
-                        });
-                        count = 0;
-                        alert(response['text']);
-                    }
-                }
-            });
-        } else {
-            alert('Error');
-        }
+        $.ajax({
+            url: 'index.php?route=extension/module/oasiscatalog/import&user_token={{ user_token }}',
+            type: 'post',
+            dataType: 'json',
+            cache: false,
+            data: {
+                currency: currency,
+                no_vat: no_vat,
+                not_on_order: not_on_order,
+                price_from: price_from,
+                price_to: price_to,
+                rating: rating,
+                warehouse_moscow: warehouse_moscow,
+                warehouse_europe: warehouse_europe,
+                remote_warehouse: remote_warehouse,
+                category: category,
+                tax_class: tax_class
+            },
+            success: function (response) {
+                [].forEach.call(document.querySelectorAll('input, select'), function (el) {
+                    el.removeAttribute('disabled');
+                });
+                alert(response['text']);
+            }
+        });
     }
 
     $('#input-no-vat').click(function () {
@@ -331,9 +323,4 @@
         }
     });
     //--></script>
-<div class="row">
-    <div class="text-center">
-        <div id="resp"></div>
-    </div>
-</div>
 {{ footer }}

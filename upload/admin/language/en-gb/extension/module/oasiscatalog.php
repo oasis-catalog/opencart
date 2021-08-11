@@ -41,12 +41,17 @@ $_['text_orders_link'] = 'Go to Oasiscatalog';
 $_['text_not_order'] = 'No data! Order has not yet been submitted to Oasiscatalog';
 $_['text_not_order_user_id'] = 'You do not have a UserId, specify it in the Oasiscatalog module settings!';
 $_['text_order_send'] = 'Upload order to Oasiscatalog';
+$_['text_cron_product'] = 'Cron jobs are scheduled jobs that run periodically.<br /> 
+For regular product updates, you need to configure the Cron task to run once a day.';
+$_['text_cron_stock'] = 'To update the leftovers regularly, you need to configure the Cron task to run every 30 minutes.';
 
 // Entry
 $_['entry_status'] = 'Status';
 $_['entry_api_key'] = 'API key';
 $_['entry_user_id'] = 'User ID';
 $_['entry_order'] = 'Order data in OasisCatalog';
+$_['entry_cron_product'] = 'Cron - import/update products (1 time per knock)';
+$_['entry_cron_stock'] = 'Cron - update stock (every 30 minutes)';
 
 //Variable
 $_['var_size'] = 'Размер';
