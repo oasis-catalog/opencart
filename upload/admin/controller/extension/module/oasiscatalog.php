@@ -16,6 +16,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     private const API_CATEGORIES = 'categories';
     private const API_PRODUCTS = 'products';
     private const API_BRANDS = 'brands';
+    private const API_STOCK = 'stock';
     private const API_CAT_FIELDS = 'id,parent_id,root,level,slug,name,path';
 
     public function __construct($registry)
@@ -246,6 +247,62 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         if (!isset($_GET['key']) || $_GET['key'] !== CRON_KEY) {
             return;
         }
+
+        $this->load->model('extension/module/oasiscatalog');
+
+        try {
+            set_time_limit(120);
+            $stock = $this->curl_query(self::API_V4, self::API_STOCK, ['fields' => 'id,stock']);
+            $arrOasis = [];
+
+            foreach ($stock as $key => $item) {
+                $arrOasis[] = $item->id;
+                $oasisProduct = $this->model_extension_module_oasiscatalog->getOasisProduct($item->id);
+
+                if ($oasisProduct && (int)$oasisProduct['rating'] !== 5) {
+                    if ((int)$oasisProduct['option_value_id'] === 0) {
+                        $this->model_extension_module_oasiscatalog->upProductQuantity($oasisProduct['product_id'], $item->stock);
+                    } else {
+                        $this->model_extension_module_oasiscatalog->upProductOptionValue($oasisProduct['option_value_id'], $item->stock);
+                        $product_options = $this->model_extension_module_oasiscatalog->getProductOptionValues($oasisProduct['product_id']);
+
+                        if (array_search(1000000, array_column($product_options, 'quantity')) === false) {
+                            $this->model_extension_module_oasiscatalog->upProductQuantity($oasisProduct['product_id'], array_sum(array_column($product_options, 'quantity')));
+                        }
+                    }
+                }
+            }
+            unset($item, $oasisProduct, $product_options);
+
+            $oasisProducts = $this->model_extension_module_oasiscatalog->getOasisProducts();
+
+            $arrProduct = [];
+            foreach ($oasisProducts as $product) {
+                $arrProduct[] = $product['product_id_oasis'];
+            }
+            unset($product);
+
+            $array_diff = array_diff($arrProduct, $arrOasis);
+
+            if ($array_diff) {
+                foreach ($array_diff as $key => $value) {
+                    if ((int)$oasisProducts[$key]['option_value_id'] === 0) {
+                        $this->model_extension_module_oasiscatalog->disableProduct($oasisProducts[$key]['product_id']);
+                    } else {
+                        $this->model_extension_module_oasiscatalog->upProductOptionValue($oasisProducts[$key]['option_value_id'], 0);
+                        $product_options = $this->model_extension_module_oasiscatalog->getProductOptionValues($oasisProducts[$key]['product_id']);
+
+                        if (array_sum(array_column($product_options, 'quantity')) === 0) {
+                            $this->model_extension_module_oasiscatalog->disableProduct($oasisProducts[$key]['product_id']);
+                        }
+                    }
+                }
+                unset($key, $value);
+            }
+            $this->saveToLog('cron', 'Stock updated');
+        } catch (\Exception $exception) {
+            return;
+        }
     }
 
     /**
@@ -341,7 +398,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     {
         $this->load->model('extension/module/oasiscatalog');
 
-        $date_modified = $this->model_extension_module_oasiscatalog->getProductDateModified($product_oasis->id);
+        $date_modified = $this->model_extension_module_oasiscatalog->getOasisProductDateModified($product_oasis->id);
 
         if ($date_modified && strtotime($product_oasis->updated_at) < strtotime($date_modified['option_date_modified'])) {
             $this->saveToLog($product_oasis->id, 'Товар в каталоге не изменился, товар не обновлен');
@@ -360,7 +417,9 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         $data['product_option'] = $this->model_catalog_product->getProductOptions($product_info['product_id']);
 
+        $option_value_id = 0;
         if ($product_option) {
+            $option_value_id = $product_option[0]['product_option_value'][0]['option_value_id'];
 
             if ((float)$data['price'] < (float)$product_oasis->price) {
                 $product_option[0]['product_option_value'][0]['price'] = (float)$product_oasis->price - (float)$data['price'];
@@ -408,7 +467,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         }
         unset($key, $value);
 
-        $product_data = $this->model_extension_module_oasiscatalog->getProduct($product_oasis->group_id);
+        $product_data = $this->model_extension_module_oasiscatalog->getOasisProduct($product_oasis->group_id);
         if ($product_data) {
             $product_related = $this->model_catalog_product->getProductRelated($product_data['product_id']);
 
@@ -418,7 +477,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             $data['product_related'] = $product_related;
         }
 
-        $arr_product = $this->setProduct($data, $product_oasis);
+        $arr_product = $this->setProduct($data, $product_oasis, $option_value_id);
         $this->model_catalog_product->editProduct($product_info['product_id'], $arr_product);
 
         if ($product_option) {
@@ -428,16 +487,18 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         if (empty($date_modified)) {
             $args = [
                 'product_id_oasis' => $product_oasis->id,
+                'rating' => $product_oasis->rating,
                 'option_value_id' => $product_option_value['product_option_value_id'] ?? '',
                 'product_id' => $product_info['product_id'],
             ];
-            $this->model_extension_module_oasiscatalog->addProduct($args);
+            $this->model_extension_module_oasiscatalog->addOasisProduct($args);
         } else {
             $args = [
+                'rating' => $product_oasis->rating,
                 'option_value_id' => $product_option_value['product_option_value_id'] ?? '',
                 'product_id' => $product_info['product_id'],
             ];
-            $this->model_extension_module_oasiscatalog->editProduct($product_oasis->id, $args);
+            $this->model_extension_module_oasiscatalog->editOasisProduct($product_oasis->id, $args);
         }
 
         $this->saveToLog($product_oasis->id, 'Товар обновлен');
@@ -491,21 +552,23 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         $args = [
             'product_id_oasis' => $product->id,
+            'rating' => $product->rating,
             'option_value_id' => $product_option_value['product_option_value_id'] ?? '',
             'product_id' => $product_id,
         ];
-        $this->model_extension_module_oasiscatalog->addProduct($args);
+        $this->model_extension_module_oasiscatalog->addOasisProduct($args);
 
         return $product_id;
     }
 
     /**
-     * @param $data
-     * @param $product_o
+     * @param     $data
+     * @param     $product_o
+     * @param int $option_value_id
      * @return array
      * @throws Exception
      */
-    public function setProduct($data, $product_o): array
+    public function setProduct($data, $product_o, int $option_value_id = 0): array
     {
         $this->load->model('catalog/product');
         $this->load->model('localisation/language');
@@ -576,11 +639,12 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         }
 
         if ($product_o->rating === 5) {
-            if (!empty($product['product_option'])) {
+            if ($option_value_id) {
                 foreach ($product['product_option'][0]['product_option_value'] as $key => $value) {
-                    $product['product_option'][0]['product_option_value'][$key]['quantity'] = 1000000;
+                    if ($value['option_value_id'] == $option_value_id) {
+                        $product['product_option'][0]['product_option_value'][$key]['quantity'] = 1000000;
+                    }
                 }
-                unset($key, $value);
             }
             $product['quantity'] = 1000000;
         }
