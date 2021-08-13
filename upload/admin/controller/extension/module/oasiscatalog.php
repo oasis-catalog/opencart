@@ -187,6 +187,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
             try {
                 set_time_limit(180);
+                ini_set('memory_limit', '2G');
                 $this->products = $this->curl_query(self::API_V4, self::API_PRODUCTS, $categories + $args);
                 $this->cat_oasis = $this->getCategoriesOasis(['fields' => self::API_CAT_FIELDS]);
 
@@ -225,6 +226,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         try {
             set_time_limit(180);
+            ini_set('memory_limit', '2G');
             $this->products = $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);
             $this->cat_oasis = $this->getCategoriesOasis(['fields' => self::API_CAT_FIELDS]);
 
