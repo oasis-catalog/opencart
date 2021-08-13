@@ -193,7 +193,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
                 if ($this->products) {
                     foreach ($this->products as $product) {
-                        set_time_limit(40);
+                        set_time_limit(60);
                         $this->product($product, $args, $data);
                     }
                     $json['text'] = 'Товары обработаны';
@@ -232,7 +232,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
             if ($this->products) {
                 foreach ($this->products as $product) {
-                    set_time_limit(30);
+                    set_time_limit(60);
                     $this->product($product, $args);
                 }
             }
@@ -335,13 +335,15 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                     'id' => $product->parent_size_id,
                 ];
 
-                $searchId = $product->parent_size_id;
-                $neededProduct = array_filter($this->products, function ($e) use ($searchId) {
-                    return $e->id == $searchId;
-                });
-                if ($neededProduct) {
-                    $parent_product = array_shift($neededProduct);
-                } else {
+                $parent_product = [];
+                foreach ($this->products as $key => $item) {
+                    if ($item->id === $product->parent_size_id) {
+                        $parent_product = $this->products[$key];
+                        break;
+                    }
+                }
+
+                if (!$parent_product) {
                     $parent_product_oasis = $this->getProductOasis($args);
                     $parent_product = $parent_product_oasis ? array_shift($parent_product_oasis) : false;
                 }
@@ -358,7 +360,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 } else {
                     $this->saveToLog($product->id, 'parent_id = ' . $product->parent_size_id . ' | Error. Не найдено товаров с таким ID');
                 }
-                unset($product_oc, $parent_product_oasis, $neededProduct, $searchId);
+                unset($product_oc, $parent_product_oasis);
             }
         } else {
             $this->checkProduct($data, $product);
