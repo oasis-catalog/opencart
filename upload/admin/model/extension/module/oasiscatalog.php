@@ -53,6 +53,20 @@ class ModelExtensionModuleOasiscatalog extends Model
         return $query->rows;
     }
 
+    public function getOasisProductIdByOption($option_value_id)
+    {
+        $query = $this->db->query("SELECT product_id_oasis FROM " . DB_PREFIX . "oasis_product WHERE option_value_id = '" . (int)$option_value_id . "'");
+
+        return $query->row;
+    }
+
+    public function getOasisProductIdByProductId($product_id)
+    {
+        $query = $this->db->query("SELECT product_id_oasis FROM " . DB_PREFIX . "oasis_product WHERE product_id = '" . (int)$product_id . "'");
+
+        return $query->row;
+    }
+
     public function getOasisProductDateModified($product_id_oasis)
     {
         $query = $this->db->query("SELECT `option_date_modified` FROM " . DB_PREFIX . "oasis_product WHERE product_id_oasis = '" . $this->db->escape($product_id_oasis) . "'");
