@@ -45,9 +45,6 @@ $_['entry_order'] = 'Данные заказа в OasisCatalog';
 $_['entry_cron_product'] = 'Cron - импорт/обновление товаров (1 раз в стуки)';
 $_['entry_cron_stock'] = 'Cron - обновление остатков (каждые 30 минут)';
 
-//Variable
-$_['var_size'] = 'Размер';
-
 // Button
 $_['button_import'] = 'Импорт';
 

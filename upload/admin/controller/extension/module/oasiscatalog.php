@@ -8,6 +8,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     private $error = [];
     private $cat_oasis = [];
     private $products = [];
+    private $var_size = 'Размер';
     private const ROUTE = 'extension/module/oasiscatalog';
     private const API_URL = 'https://api.oasiscatalog.com/';
     private const API_V4 = 'v4/';
@@ -186,14 +187,13 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             }
 
             try {
-                set_time_limit(180);
+                set_time_limit(0);
                 ini_set('memory_limit', '2G');
                 $this->products = $this->curl_query(self::API_V4, self::API_PRODUCTS, $categories + $args);
                 $this->cat_oasis = $this->getCategoriesOasis(['fields' => self::API_CAT_FIELDS]);
 
                 if ($this->products) {
                     foreach ($this->products as $product) {
-                        set_time_limit(60);
                         $this->product($product, $args, $data);
                     }
                     $json['text'] = 'Товары обработаны';
@@ -225,14 +225,13 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         ];
 
         try {
-            set_time_limit(180);
+            set_time_limit(0);
             ini_set('memory_limit', '2G');
             $this->products = $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);
             $this->cat_oasis = $this->getCategoriesOasis(['fields' => self::API_CAT_FIELDS]);
 
             if ($this->products) {
                 foreach ($this->products as $product) {
-                    set_time_limit(60);
                     $this->product($product, $args);
                 }
             }
@@ -253,7 +252,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $this->load->model('extension/module/oasiscatalog');
 
         try {
-            set_time_limit(120);
+            set_time_limit(0);
             $stock = $this->curl_query(self::API_V4, self::API_STOCK, ['fields' => 'id,stock']);
             $arrOasis = [];
 
@@ -320,24 +319,23 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
         $result = null;
 
-        if (!is_null($product->parent_size_id)) {
-            $this->load->language(self::ROUTE);
+        if (!is_null($product->parent_size_id) || !is_null($product->parent_volume_id)) {
 
-            $option = $this->getOption($this->language->get('var_size'), $product->size, $product->total_stock);
+            $option = $this->getOption($this->var_size, $product->size, $product->total_stock);
 
             $data['option'] = $option['option']['name'];
             $data['product_option'] = $this->setOption($option);
 
-            if ($product->parent_size_id === $product->id) {
+            if ($product->parent_size_id === $product->id || $product->parent_volume_id === $product->id) {
                 $result = $this->checkProduct($data, $product);
             } else {
                 $args['ids'] = [
-                    'id' => $product->parent_size_id,
+                    'id' => !is_null($product->parent_size_id) ? $product->parent_size_id : $product->parent_volume_id,
                 ];
 
                 $parent_product = [];
                 foreach ($this->products as $key => $item) {
-                    if ($item->id === $product->parent_size_id) {
+                    if ($item->id === $args['ids']['id']) {
                         $parent_product = $this->products[$key];
                         break;
                     }
@@ -358,7 +356,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
                     $this->editProduct($product_oc[0], $product, $data['product_option']);
                 } else {
-                    $this->saveToLog($product->id, 'parent_id = ' . $product->parent_size_id . ' | Error. Не найдено товаров с таким ID');
+                    $this->saveToLog($product->id, 'parent_id = ' . $args['ids']['id'] . ' | Error. Не найдено товаров с таким ID');
                 }
                 unset($product_oc, $parent_product_oasis);
             }
@@ -440,6 +438,12 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 }
                 unset($key, $value);
 
+                foreach ($data['product_option'][0]['product_option_value'] as $key => $value) {
+                    if ($value['option_value_id'] === $product_option[0]['product_option_value'][0]['option_value_id']) {
+                        $data['product_option'][0]['product_option_value'][$key] = $product_option[0]['product_option_value'][0];
+                    }
+                }
+
                 $key_option = array_search($product_option[0]['product_option_value'][0]['option_value_id'], array_column($data['product_option'][0]['product_option_value'], 'option_value_id'));
 
                 if ($key_option === false) {
@@ -457,7 +461,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             $data['manufacturer'] = $manufacturer_info['name'];
         }
 
-        $data['product_category'] = $this->getArrCategories($product_oasis->categories);
+        $data['product_category'] = $this->getArrCategories($product_oasis->full_categories);
 
         $images = $this->model_catalog_product->getProductImages($product_info['product_id']);
 
@@ -520,7 +524,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     {
         $this->load->model('catalog/product');
 
-        $data['product_category'] = $this->getArrCategories($product->categories);
+        $data['product_category'] = $this->getArrCategories($product->full_categories);
 
         if (!is_null($product->brand_id)) {
             $data['manufacturer_id'] = $this->addBrand($this->getBrandsOasis(), $product->brand_id);
@@ -578,19 +582,26 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $this->load->model('localisation/language');
         $languages = $this->model_localisation_language->getLanguages();
 
-        $product['product_description'] = [];
+        if (empty($data['model']) || $data['model'] === $product_o->article) {
+            $product['product_description'] = [];
 
-        foreach ($languages as $language) {
-            $product['product_description'][$language['language_id']] = [
-                'name' => htmlspecialchars($product_o->full_name, ENT_QUOTES),
-                'description' => htmlspecialchars('<p>' . nl2br($product_o->description) . '</p>', ENT_QUOTES),
-                'meta_title' => htmlspecialchars($product_o->full_name, ENT_QUOTES),
-                'meta_description' => '',
-                'meta_keyword' => '',
-                'tag' => '',
-            ];
+            foreach ($languages as $language) {
+                $product['product_description'][$language['language_id']] = [
+                    'name' => htmlspecialchars($product_o->full_name, ENT_QUOTES),
+                    'description' => htmlspecialchars('<p>' . nl2br($product_o->description) . '</p>', ENT_QUOTES),
+                    'meta_title' => htmlspecialchars($product_o->full_name, ENT_QUOTES),
+                    'meta_description' => '',
+                    'meta_keyword' => '',
+                    'tag' => '',
+                ];
+            }
+            unset($language);
+
+            $product['price'] = $product_o->price;
+        } else {
+            $product['product_description'] = $this->model_catalog_product->getProductDescriptions($data['product_id']);
+            $product['price'] = $data['price'];
         }
-        unset($language);
 
         $product['model'] = $data['model'] ?? htmlspecialchars($product_o->article, ENT_QUOTES);
         $product['sku'] = $data['sku'] ?? '';
@@ -600,7 +611,6 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $product['isbn'] = $data['isbn'] ?? '';
         $product['mpn'] = $data['mpn'] ?? '';
         $product['location'] = $data['location'] ?? '';
-        $product['price'] = $product_o->price;
         $product['tax_class_id'] = $data['tax_class_id'] ?? '0';
         $product['minimum'] = $data['minimum'] ?? 1;
         $product['subtract'] = $data['subtract'] ?? 1;
@@ -790,17 +800,15 @@ class ControllerExtensionModuleOasiscatalog extends Controller
      */
     public function addAttributes($attributes): array
     {
-        $this->load->language(self::ROUTE);
         $this->load->model('catalog/attribute');
         $this->load->model('localisation/language');
 
         $languages = $this->model_localisation_language->getLanguages();
-        $var_size = $this->language->get('var_size');
         $data = [];
 
         foreach ($attributes as $attribute) {
             $name = $attribute->name;
-            if ($name !== $var_size) {
+            if ($name !== $this->var_size) {
                 $neededAttribute = [];
 
                 $attributes_store = $this->model_catalog_attribute->getAttributes();
@@ -813,7 +821,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 
                     $key_attr = array_search($attr['name'], array_column($data, 'name'));
 
-                    if ($key_attr) {
+                    if ($key_attr !== false) {
                         foreach ($data[$key_attr]['product_attribute_description'] as $key => $value) {
                             $data[$key_attr]['product_attribute_description'][$key]['text'] .= ', ' . $attribute->value;
                         }
@@ -1055,7 +1063,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $name = 'Характеристики';
         $key = array_search($name, array_column($attribute_groups, 'name'));
 
-        if ($key) {
+        if ($key !== false) {
             $attribute_group_id = $attribute_groups[$key]['attribute_group_id'];
         } else {
             $data_attribute_group = [];
