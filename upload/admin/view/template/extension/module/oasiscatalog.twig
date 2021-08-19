@@ -1,5 +1,82 @@
 {{ header }}{{ column_left }}
 <div id="content">
+    <style type="text/css">
+        .tree-select {
+            line-height: normal;
+        }
+
+        .tree-select label {
+            position: relative;
+            display: block;
+            padding: 0 0 0 1.2em;
+            margin: 0;
+        }
+
+        .tree-select label:not(:nth-last-of-type(1)) {
+            border-left: 1px solid #94a5bd;
+        }
+
+        .tree-select label:before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1.1em;
+            height: .5em;
+            border-bottom: 1px solid #94a5bd;
+        }
+
+        .tree-select label:nth-last-of-type(1):before {
+            border-left: 1px solid #94a5bd;
+        }
+
+        .tree-select fieldset,
+        .tree-select fieldset[class=""] .razvernut {
+            position: absolute;
+            visibility: hidden;
+            margin: 0;
+            padding: 0 0 0 2em;
+            border: none;
+        }
+
+        .tree-select fieldset:not(:last-child) {
+            border-left: 1px solid #94a5bd;
+        }
+
+        .tree-select .razvernut {
+            position: relative;
+            visibility: visible;
+        }
+
+        .tree-select > fieldset > legend,
+        .tree-select .razvernut > fieldset > legend {
+            position: absolute;
+            left: -5px;
+            top: 2px;
+            height: 10px;
+            width: 10px;
+            margin-top: -1em;
+            padding: 0;
+            border: 1px solid #94a5bd;
+            border-radius: 2px;
+            background-repeat: no-repeat;
+            background-position: 50% 50%;
+            background-color: #fff;
+            background-image: linear-gradient(to left, #1b4964, #1b4964), linear-gradient(#1b4964, #1b4964), linear-gradient(315deg, #a0b6d8, #e8f3ff 60%, #fff 60%);
+            background-size: 1px 5px, 5px 1px, 100% 100%;
+            visibility: visible;
+            cursor: pointer;
+        }
+
+        .tree-select fieldset[class=""] .razvernut fieldset legend {
+            visibility: hidden;
+        }
+
+        .tree-select .razvernut > legend {
+            background-image: linear-gradient(#1b4964, #1b4964) !important;
+            background-size: 5px 1px !important;
+        }
+    </style>
     <div class="page-header">
         <div class="container-fluid">
             <div class="pull-right">
@@ -24,7 +101,7 @@
                 <h3 class="panel-title"><i class="fa fa-pencil"></i> {{ text_edit }}</h3>
             </div>
             <div class="panel-body">
-                <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-module" class="form-horizontal">
+                <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-module" class="form-horizontal" name="oasis">
                     <div role="tabs">
                         <div class="tab-content">
                             <ul class="nav nav-tabs" role="tablist">
@@ -111,12 +188,16 @@
                                                         <label class="col-sm-6 control-label" for="input-no-vat">{{ text_no_vat }}</label>
                                                         <div class="col-sm-6">
                                                             <label class="control-label">
-                                                                <input type="checkbox" name="no-vat" value="1" id="input-no-vat"/>
+                                                                {% if no_vat %}
+                                                                    <input type="checkbox" name="no_vat" value="1" id="input-no-vat" checked/>
+                                                                {% else %}
+                                                                    <input type="checkbox" name="no_vat" value="1" id="input-no-vat"/>
+                                                                {% endif %}
                                                             </label>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div class="form-group" id="tax-class" style="display: none;">
+                                                <div class="form-group" id="tax-class" style="{% if not no_vat %}display: none;{% endif %}">
                                                     <div class="col-sm-12">
                                                         <label class="col-sm-6 control-label" for="input-tax-class">{{ text_tax_class }}</label>
                                                         <div class="col-sm-6">
@@ -138,7 +219,11 @@
                                                         <label class="col-sm-6 control-label" for="input-not-on-order">{{ text_not_on_order }}</label>
                                                         <div class="col-sm-6">
                                                             <label class="control-label">
-                                                                <input type="checkbox" name="not-on-order" value="1" id="input-not-on-order"/>
+                                                                {% if not_on_order %}
+                                                                    <input type="checkbox" name="not_on_order" value="1" id="input-not-on-order" checked/>
+                                                                {% else %}
+                                                                    <input type="checkbox" name="not_on_order" value="1" id="input-not-on-order"/>
+                                                                {% endif %}
                                                             </label>
                                                         </div>
                                                     </div>
@@ -152,13 +237,25 @@
                                                                     <label class="control-label" for="input-price-from">{{ text_price_from }}</label>
                                                                 </div>
                                                                 <div class="col-sm-5">
-                                                                    <input type="text" name="price-from" value="" placeholder="{{ text_price_from }}" id="input-price-from" class="form-control">
+                                                                    {% if price_from %}
+                                                                        <input type="text" name="price_from" value="{{ price_from }}" placeholder="{{ text_price_from }}" id="input-price-from"
+                                                                               class="form-control">
+                                                                    {% else %}
+                                                                        <input type="text" name="price_from" value="" placeholder="{{ text_price_from }}" id="input-price-from" class="form-control">
+                                                                    {% endif %}
+
                                                                 </div>
                                                                 <div class="col-sm-1">
                                                                     <label class="control-label" for="input-price-to">{{ text_price_to }}</label>
                                                                 </div>
                                                                 <div class="col-sm-5">
-                                                                    <input type="text" name="price-to" value="" placeholder="{{ text_price_to }}" id="input-price-to" class="form-control">
+                                                                    {% if price_to %}
+                                                                        <input type="text" name="price_to" value="{{ price_to }}" placeholder="{{ text_price_to }}" id="input-price-to"
+                                                                               class="form-control">
+                                                                    {% else %}
+                                                                        <input type="text" name="price_to" value="" placeholder="{{ text_price_to }}" id="input-price-to" class="form-control">
+                                                                    {% endif %}
+
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -169,15 +266,27 @@
                                                         <div class="col-sm-6"></div>
                                                         <div class="col-sm-6" id="rating-group">
                                                             <label class="col-sm-12">
-                                                                <input type="checkbox" name="rating" value="1" id="input-rating-group"/>
+                                                                {% if rating == 1 %}
+                                                                    <input type="checkbox" name="rating" value="1" id="input-rating-group" checked/>
+                                                                {% else %}
+                                                                    <input type="checkbox" name="rating" value="1" id="input-rating-group"/>
+                                                                {% endif %}
                                                                 {{ text_only_new }}
                                                             </label>
                                                             <label class="col-sm-12">
-                                                                <input type="checkbox" name="rating" value="2" id="input-rating-group"/>
+                                                                {% if rating == 2 %}
+                                                                    <input type="checkbox" name="rating" value="2" id="input-rating-group" checked/>
+                                                                {% else %}
+                                                                    <input type="checkbox" name="rating" value="2" id="input-rating-group"/>
+                                                                {% endif %}
                                                                 {{ text_only_hits }}
                                                             </label>
                                                             <label class="col-sm-12">
-                                                                <input type="checkbox" name="rating" value="3" id="input-rating-group"/>
+                                                                {% if rating == 3 %}
+                                                                    <input type="checkbox" name="rating" value="3" id="input-rating-group" checked/>
+                                                                {% else %}
+                                                                    <input type="checkbox" name="rating" value="3" id="input-rating-group"/>
+                                                                {% endif %}
                                                                 {{ text_only_discount }}
                                                             </label>
                                                         </div>
@@ -188,15 +297,27 @@
                                                         <div class="col-sm-6"></div>
                                                         <div class="col-sm-6">
                                                             <label class="col-sm-12">
-                                                                <input type="checkbox" name="warehouse_moscow" value="1" id="input-warehouse"/>
+                                                                {% if warehouse_moscow %}
+                                                                    <input type="checkbox" name="warehouse_moscow" value="1" id="input-warehouse" checked/>
+                                                                {% else %}
+                                                                    <input type="checkbox" name="warehouse_moscow" value="1" id="input-warehouse"/>
+                                                                {% endif %}
                                                                 {{ text_warehouse_moscow }}
                                                             </label>
                                                             <label class="col-sm-12">
-                                                                <input type="checkbox" name="warehouse_europe" value="1" id="input-warehouse"/>
+                                                                {% if warehouse_europe %}
+                                                                    <input type="checkbox" name="warehouse_europe" value="1" id="input-warehouse" checked/>
+                                                                {% else %}
+                                                                    <input type="checkbox" name="warehouse_europe" value="1" id="input-warehouse"/>
+                                                                {% endif %}
                                                                 {{ text_warehouse_europe }}
                                                             </label>
                                                             <label class="col-sm-12">
-                                                                <input type="checkbox" name="remote_warehouse" value="1" id="input-warehouse"/>
+                                                                {% if remote_warehouse %}
+                                                                    <input type="checkbox" name="remote_warehouse" value="1" id="input-warehouse" checked/>
+                                                                {% else %}
+                                                                    <input type="checkbox" name="remote_warehouse" value="1" id="input-warehouse"/>
+                                                                {% endif %}
                                                                 {{ text_remote_warehouse }}
                                                             </label>
                                                         </div>
@@ -207,22 +328,9 @@
                                                 <div class="form-group">
                                                     <label class="col-sm-12 control-label" style="text-align: left;" for="input-category">{{ text_select_categories }}</label>
                                                     <div class="col-sm-12">
-                                                        <div class="well well-sm" style="min-height: 150px;max-height: 500px;overflow: auto;">
-                                                            <table class="table table-striped">
-                                                                {% for key, category in categories %}
-                                                                    <tr>
-                                                                        <td class="checkbox" style="padding: 5px;">
-                                                                            <label>
-                                                                                <input id="categories" type="checkbox" name="category[]" value="{{ key }}"/>
-                                                                                {{ category }}
-                                                                            </label>
-                                                                        </td>
-                                                                    </tr>
-                                                                {% endfor %}
-                                                            </table>
+                                                        <div class="tree-select razvernut">
+                                                            {{ categories }}
                                                         </div>
-                                                        <a onclick="$(this).parent().find(':checkbox').prop('checked', true);">{{ text_select_all }}</a> / <a
-                                                                onclick="$(this).parent().find(':checkbox').prop('checked', false);">{{ text_unselect_all }}</a>
                                                     </div>
                                                 </div>
                                             </div>
@@ -258,10 +366,10 @@
         e.preventDefault();
 
         var currency = $('#input-currency option:selected').val();
-        var no_vat = $('[name="no-vat"]').is(":checked") ? 1 : 0;
-        var not_on_order = $('[name="not-on-order"]').is(":checked") ? 1 : null;
-        var price_from = $('[name="price-from"]').val();
-        var price_to = $('[name="price-to"]').val();
+        var no_vat = $('[name="no_vat"]').is(":checked") ? 1 : 0;
+        var not_on_order = $('[name="not_on_order"]').is(":checked") ? 1 : null;
+        var price_from = $('[name="price_from"]').val();
+        var price_to = $('[name="price_to"]').val();
         var tax_class = $('#input-tax-class option:selected').val();
 
         var rating = null;
@@ -308,6 +416,51 @@
             }
         });
     }
+
+    var t = document.forms.oasis;
+    [].forEach.call(t.querySelectorAll('fieldset'), function (eFieldset) {
+        var main = [].filter.call(t.querySelectorAll('[type="checkbox"]'), function (element) {
+            return element.parentNode.nextElementSibling == eFieldset;
+        });
+        main.forEach(function (eMain) {
+            var l = [].filter.call(eFieldset.querySelectorAll('legend'), function (e) {
+                return e.parentNode == eFieldset;
+            });
+            l.forEach(function (eL) {
+                var all = eFieldset.querySelectorAll('[type="checkbox"]');
+                eL.onclick = Razvernut;
+                eFieldset.onchange = Razvernut;
+
+                {% if category %}
+                var category = {{ category }};
+                for (var i = 0; i < category.length; i++)
+                    t.querySelector('[type="checkbox"][value="' + category[i] + '"]').checked = true;
+                Razvernut('true');
+                {% endif %}
+
+                function Razvernut(load) {
+                    var allChecked = eFieldset.querySelectorAll('[type="checkbox"]:checked').length;
+                    eMain.checked = allChecked == all.length;
+                    eMain.indeterminate = allChecked > 0 && allChecked < all.length;
+                    if (eMain.indeterminate || eMain.checked || ((eFieldset.className == '') && (load != 'true'))) {
+                        eFieldset.className = 'razvernut';
+                    } else {
+                        eFieldset.className = '';
+                    }
+                }
+
+                eMain.onclick = function () {
+                    for (var i = 0; i < all.length; i++)
+                        all[i].checked = this.checked;
+                    if (this.checked) {
+                        eFieldset.className = 'razvernut';
+                    } else {
+                        eFieldset.className = '';
+                    }
+                }
+            });
+        });
+    });
 
     $('#input-no-vat').click(function () {
         if ($(this).is(':checked')) {
