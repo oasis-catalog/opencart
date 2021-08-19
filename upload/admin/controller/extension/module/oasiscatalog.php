@@ -1385,8 +1385,9 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $img = $this->imgFolder($data['folder_name']) . $data['img_name'] . $count . '.' . $ext['extension'];
 
         if (!file_exists($img)) {
-            $pic = file_get_contents($data['img_url'], true, stream_context_create(['http' => ['ignore_errors' => true]]));
-            if (!preg_match("|200|", $http_response_header[0])) {
+            $pic = file_get_contents($data['img_url'], true, stream_context_create(['http' => ['ignore_errors' => true, 'follow_location' => true]]));
+
+            if (!preg_match("/200|301/", $http_response_header[0])) {
                 return false;
             }
             file_put_contents($img, $pic);
