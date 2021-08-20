@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+    <name>Oasiscatalog</name>
+    <code>oasiscatalog_order</code>
+    <version>1.0</version>
+    <author>Viktor G.</author>
+    <link>https://oasiscatalog.com</link>
+    <!-- CONTROLLER -->
+    <file path="admin/controller/startup/login.php">
+        <operation>
+            <search><![CDATA['common/login',]]></search>
+            <add position="before"><![CDATA[			'extension/module/oasiscatalog/cronUpProduct',
+			'extension/module/oasiscatalog/cronUpStock',]]></add>
+        </operation>
+    </file><!-- /admin/controller/startup/login.php -->
+    <file path="admin/controller/startup/permission.php">
+        <operation>
+            <search><![CDATA['common/dashboard',]]></search>
+            <add position="before"><![CDATA[				'extension/module/oasiscatalog',]]></add>
+        </operation>
+    </file><!-- /admin/controller/startup/permission.php -->
+    <file path="admin/controller/sale/order.php">
+        <operation>
+            <search><![CDATA[$data['accept_language'] = $order_info['accept_language'];]]></search>
+            <add position="after"><![CDATA[
+			// Oasiscatalog order
+            $this->load->language('extension/module/oasiscatalog');
+            $this->load->model('extension/module/oasiscatalog');
+            $this->load->model('setting/setting');
+
+            $data['oasis_order_status'] = false;
+            $data['oasis_order_number'] = '';
+            $data['oasis_order_created'] = '';
+            $data['oasis_order_statusText'] = '';
+
+            $user_id = $this->config->get('oasiscatalog_user_id');
+
+            if ($user_id) {
+                $oasis_order_oc = $this->model_extension_module_oasiscatalog->getOrder($data['order_id']);
+
+                if ($oasis_order_oc) {
+
+                    $args = [
+                        'key' => $this->config->get('oasiscatalog_api_key'),
+                        'format' => 'json',
+                    ];
+
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, 'https://api.oasiscatalog.com/v4/reserves/by-queue/' . $oasis_order_oc['queue_id'] . '?' . http_build_query($args));
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    $oasis_order = json_decode(curl_exec($ch));
+                    curl_close($ch);
+
+                    if (isset($oasis_order->state)) {
+                        if ($oasis_order->state == 'created') {
+                            $data['oasis_order_status'] = 1;
+                            $data['oasis_order_number'] = $oasis_order->order->number;
+                            $data['oasis_order_created'] = $oasis_order->order->createdAt;
+                            $data['oasis_order_statusText'] = $oasis_order->order->statusText;
+                        } elseif ($oasis_order->state == 'pending') {
+                            $data['oasis_order_status'] = 2;
+                            $data['oasis_order_statusText'] = $this->language->get('text_order_pending');
+                        }elseif ($oasis_order->state == 'error') {
+                            $data['oasis_order_status'] = 3;
+                            $data['oasis_order_statusText'] = $this->language->get('text_order_error');
+                        }
+                    }
+                } else {
+                    $data['oasis_order_statusText'] = $this->language->get('text_not_order');
+                }
+            } else {
+                $data['oasis_order_statusText'] = $this->language->get('text_not_order_user_id');
+            }
+]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA[protected function validate() {]]></search>
+            <add position="before"><![CDATA[
+	public function sendOrderOasis ()
+    {
+        $this->load->language('extension/module/oasiscatalog');
+        $this->load->model('extension/module/oasiscatalog');
+        $this->load->model('setting/setting');
+
+        $json['error'] = $this->language->get('error_order_import');
+
+        if ($this->request->server['REQUEST_METHOD'] == 'POST') {
+            $order_id = $this->request->post['order_id'] ?? 0;
+            $user_id = $this->config->get('oasiscatalog_user_id');
+            $api_key = $this->config->get('oasiscatalog_api_key');
+            $oasis_order_oc = $this->model_extension_module_oasiscatalog->getOrder($order_id);
+
+            if ($user_id && $api_key && !$oasis_order_oc) {
+                $data = [];
+                $data['userId'] = $user_id;
+
+                $this->load->model('sale/order');
+                $products = $this->model_sale_order->getOrderProducts($this->request->post['order_id']);
+
+                $data['items'] = [];
+                foreach ($products as $product) {
+                    $options = $this->model_sale_order->getOrderOptions($this->request->post['order_id'], $product['order_product_id']);
+
+                    if ($options) {
+                        foreach ($options as $option) {
+                            if ($option['type'] != 'file') {
+                                $product_id_oasis = $this->model_extension_module_oasiscatalog->getOasisProductIdByOption($option['product_option_value_id']);
+
+                                $data['items'][] = [
+                                    'productId' => $product_id_oasis['product_id_oasis'],
+                                    'quantity' => $product['quantity'],
+                                ];
+                            }
+                        }
+                    } else {
+                        $product_id_oasis = $this->model_extension_module_oasiscatalog->getOasisProductIdByProductId($product['product_id']);
+
+                        $data['items'][] = [
+                            'productId' => $product_id_oasis['product_id_oasis'],
+                            'quantity' => $product['quantity'],
+                        ];
+                    }
+                }
+
+                try {
+                    $options = [
+                        'http' => [
+                            'method' => 'POST',
+                            'header' => 'Content-Type: application/json' . PHP_EOL .
+                                'Accept: application/json' . PHP_EOL,
+                            'content' => json_encode($data),
+                        ],
+                    ];
+
+                    $request = json_decode(file_get_contents('https://api.oasiscatalog.com/v4/reserves/?key=' . $api_key, 0,  stream_context_create($options)));
+
+                    if (isset($request->queueId)) {
+                        $data_order = [
+                            'order_id' => $order_id,
+                            'queue_id' => $request->queueId
+                        ];
+
+                        $this->model_extension_module_oasiscatalog->addOrder($data_order);
+
+                        $json = [
+                            'error' => false,
+                            'success' => $this->language->get('success_order_import')
+                        ];
+                    }
+
+                } catch (\Exception $exception) {
+                    return false;
+                }
+            }
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+]]></add>
+        </operation>
+    </file><!-- /admin/controller/sale/order.php -->
+    <!-- /CONTROLLER -->
+
+    <!-- VIEW -->
+    <file path="admin/view/template/sale/order_info.twig">
+        <operation>
+            <search><![CDATA[<h1>{{ heading_title }}</h1>]]></search>
+            <add position="before"><![CDATA[
+      {% if oasis_order_status == false %}
+      <div class="pull-right"><button data-toggle="tooltip" type="button" class="btn btn-success" id="button-send-order" title="{{ text_order_send }}" data-loading-text="<i class='fa fa-spinner fa-spin fa-fw'></i>" data-complete-text="<i class='fa fa-check'></i>"><i class="fa fa-upload"></i></button>&nbsp;&nbsp;|&nbsp;&nbsp;</div>
+      {% endif %}
+      ]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA[<h3 class="panel-title"><i class="fa fa-info-circle"></i> {{ text_order }}</h3>]]></search>
+            <add position="before" offset="2"><![CDATA[
+    <style type="text/css">
+      .oa__item {margin-bottom: 10px;}
+      .oasis-alert {padding: 15px;margin-bottom: 20px;border: 1px solid transparent;border-radius: 4px;}
+    </style>
+    <div id="order-resp"></div>
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h3 class="panel-title"><i class="fa fa-cloud-upload"></i> {{ entry_order }}</h3>
+      </div>
+      <div class="panel-body">
+        {% if oasis_order_status == 1 %}
+        <div class="col-md-3 oa__item"><button data-toggle="tooltip" title="{{ text_order_number }}" class="btn btn-primary btn-xs"><i class="fa fa-id-card-o fa-fw"></i></button>&nbsp;&nbsp;{{ oasis_order_number }}</div>
+        <div class="col-md-3 oa__item"><button data-toggle="tooltip" title="{{ text_order_created }}" class="btn btn-primary btn-xs"><i class="fa fa-calendar fa-fw"></i></button>&nbsp;&nbsp;{{ oasis_order_created }}</div>
+        <div class="col-md-3 oa__item"><button data-toggle="tooltip" title="{{ text_order_status_text }}" class="btn btn-primary btn-xs"><i class="fa fa-info-circle fa-fw"></i></button>&nbsp;&nbsp;{{ oasis_order_statusText }}</div>
+          <div class="col-md-3 text-center"><a href="https://www.oasiscatalog.com/order/index" title="{{ text_orders_link }}" class="btn btn-primary" target="_blank"><i class="fa fa-link fa-fw"></i> {{ text_orders_link }}</a></div>
+        {% elseif oasis_order_status == 2 %}
+        <div class="col-md-12" style="margin-bottom: 10px;">
+          <div class="oasis-alert alert-info">
+            {{ oasis_order_statusText }}
+          </div>
+        </div>
+        {% elseif oasis_order_status == 3 %}
+        <div class="col-md-12" style="margin-bottom: 10px;">
+          <div class="oasis-alert alert-danger">
+            {{ oasis_order_statusText }}
+          </div>
+        </div>
+        {% else %}
+          <div class="col-md-12" style="margin-bottom: 10px;">
+            <div class="oasis-alert alert-warning">
+              {{ oasis_order_statusText }}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+      ]]></add>
+        </operation>
+        <operation>
+            <search><![CDATA[<script type="text/javascript"><!--]]></search>
+            <add position="after"><![CDATA[
+  $(function() {
+    $('#button-send-order').on('click', function(e) {
+      $('#order-resp > .alert').remove();
+
+      var $button = $(this).button('loading');
+
+      $.post('index.php?route=sale/order/sendOrderOasis&user_token={{ user_token }}', 'order_id={{ order_id }}', function(response) {
+        if (response['error']) {
+          $button.button('reset');
+
+          $('#order-resp').prepend('<div class="alert alert-danger" role="alert">' + response['error'] + '</div>');
+        }
+
+        if (response['success']) {
+          $button.button('complete');
+
+          $('#order-resp').prepend('<div class="alert alert-success" role="alert">' + response['success'] + '</div>');
+
+          setTimeout(function(){
+            location.reload();
+          }, 2 * 1000);
+        }
+      }, 'json');
+    });
+  });
+      ]]></add>
+        </operation>
+    </file><!-- /admin/view/template/sale/order_info.twig -->
+    <!-- /VIEW -->
+    <!-- MODEL -->
+    <file path="admin/model/catalog/product.php">
+        <operation>
+            <search><![CDATA[$this->db->query("DELETE FROM " . DB_PREFIX . "coupon_product WHERE product_id = '" . (int)$product_id . "'");]]></search>
+            <add position="after"><![CDATA[		$this->db->query("DELETE FROM " . DB_PREFIX . "oasis_product WHERE product_id = '" . (int)$product_id . "'");]]></add>
+        </operation>
+    </file><!-- /admin/model/catalog/product.php -->
+    <!-- /MODEL -->
+</modification>
