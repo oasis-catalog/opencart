@@ -7,6 +7,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
 {
     private $error = [];
     private $cat_oasis = [];
+    private $mf_oasis = [];
     private $products = [];
     private $var_size = 'Размер';
     private $treeCats = '';
@@ -262,6 +263,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 }
 
                 $this->products = $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);
+                $this->mf_oasis = $this->getBrandsOasis();
 
                 if ($this->products) {
                     $i = 0;
@@ -324,6 +326,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
             }
 
             $this->products = $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);
+            $this->mf_oasis = $this->getBrandsOasis();
 
             if ($this->products) {
                 foreach ($this->products as $product) {
@@ -622,7 +625,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $data['product_category'] = $this->getArrCategories($product->full_categories);
 
         if (!is_null($product->brand_id)) {
-            $data['manufacturer_id'] = $this->addBrand($this->getBrandsOasis(), $product->brand_id);
+            $data['manufacturer_id'] = $this->addBrand($product->brand_id);
         }
 
         if (is_array($product->images)) {
@@ -970,14 +973,13 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     }
 
     /**
-     * @param $brands
      * @param $id
      * @return bool
      * @throws Exception
      */
-    public function addBrand($brands, $id)
+    public function addBrand($id)
     {
-        $brand = $this->searchObject($brands, $id);
+        $brand = $this->searchObject($this->mf_oasis, $id);
 
         if (!$brand) {
             return false;
