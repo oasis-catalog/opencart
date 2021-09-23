@@ -334,14 +334,6 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="col-sm-12">
-                                                <div class="form-group">
-                                                    <div class="col-sm-9 text-center">
-                                                        <button type="button" class="btn btn-success" id="start-import"><i
-                                                                    class="fa fa-copy"></i> {{ button_import }}</button>
-                                                    </div>
-                                                </div>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -359,64 +351,6 @@
     </div>
 </div>
 <script type="text/javascript"><!--
-
-    $("#start-import").click(StartImport);
-
-    function StartImport(e) {
-        e.preventDefault();
-
-        var currency = $('#input-currency option:selected').val();
-        var no_vat = $('[name="no_vat"]').is(":checked") ? 1 : 0;
-        var not_on_order = $('[name="not_on_order"]').is(":checked") ? 1 : null;
-        var price_from = $('[name="price_from"]').val();
-        var price_to = $('[name="price_to"]').val();
-        var tax_class = $('#input-tax-class option:selected').val();
-
-        var rating = null;
-        $('[name="rating"]:checked').each(function () {
-            rating = $(this).val();
-        });
-
-        var warehouse_moscow = $('[name="warehouse_moscow"]').is(":checked") ? 1 : null;
-        var warehouse_europe = $('[name="warehouse_europe"]').is(":checked") ? 1 : null;
-        var remote_warehouse = $('[name="remote_warehouse"]').is(":checked") ? 1 : null;
-
-        var category = [];
-        $('[id="categories"]:checked').each(function () {
-            category.push($(this).val());
-        });
-
-        [].forEach.call(document.querySelectorAll('input, select'), function (el) {
-            el.setAttribute('disabled', 'disabled');
-        });
-
-        $.ajax({
-            url: 'index.php?route=extension/module/oasiscatalog/import&user_token={{ user_token }}',
-            type: 'post',
-            dataType: 'json',
-            cache: false,
-            data: {
-                currency: currency,
-                no_vat: no_vat,
-                not_on_order: not_on_order,
-                price_from: price_from,
-                price_to: price_to,
-                rating: rating,
-                warehouse_moscow: warehouse_moscow,
-                warehouse_europe: warehouse_europe,
-                remote_warehouse: remote_warehouse,
-                category: category,
-                tax_class: tax_class
-            },
-            success: function (response) {
-                [].forEach.call(document.querySelectorAll('input, select'), function (el) {
-                    el.removeAttribute('disabled');
-                });
-                alert(response['text']);
-            }
-        });
-    }
-
     var t = document.forms.oasis;
     [].forEach.call(t.querySelectorAll('fieldset'), function (eFieldset) {
         var main = [].filter.call(t.querySelectorAll('[type="checkbox"]'), function (element) {
