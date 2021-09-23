@@ -7,7 +7,7 @@
 define('OPENCART_ADMIN_DIR', '');
 define('MIN_VERSION', '3.0.3.7');
 
-$root_dir = realpath(str_replace(array('oasis_cli.php', 'cli'), array('', ''), dirname(__FILE__)));
+$root_dir = realpath(str_replace(['oasis_cli.php', 'cli'], ['', ''], dirname(__FILE__)));
 
 // Admin directory
 $admin_dir = '';
