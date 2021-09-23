@@ -55,9 +55,9 @@ if ((int)str_replace('.', '', $version) < (int)str_replace('.', '', MIN_VERSION)
 }
 
 // Startup
-if (file_exists($root_dir . '/cli/' . $version . '/cli_framework.php')) {
-	require_once($root_dir . '/cli/' . $version . '/cli_framework.php');
+if (file_exists($root_dir . '/cli/' . $version . '/oasis_cli_framework.php')) {
+	require_once($root_dir . '/cli/' . $version . '/oasis_cli_framework.php');
 } else {
-	die("ERROR: cli error startup cli_framework");
+	die("ERROR: cli error startup oasis_cli_framework");
 }
 ?>
