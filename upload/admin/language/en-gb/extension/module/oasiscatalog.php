@@ -38,6 +38,7 @@ $_['text_order_send'] = 'Upload order to Oasiscatalog';
 $_['text_cron_product'] = 'Cron jobs are scheduled jobs that run periodically.<br /> 
 For regular product updates, you need to configure the Cron task to run once a day.';
 $_['text_cron_stock'] = 'To update the leftovers regularly, you need to configure the Cron task to run every 30 minutes.';
+$_['text_limit'] = 'Limit';
 
 // Entry
 $_['entry_status'] = 'Status';

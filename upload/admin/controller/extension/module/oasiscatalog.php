@@ -75,6 +75,19 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 $post_data['oasiscatalog_tax_class_id'] = 0;
             }
 
+            if (isset($this->request->post['limit']) && $this->request->post['limit'] !== '') {
+                $post_data['oasiscatalog_args']['limit'] = $this->request->post['limit'];
+                $args = $this->config->get('oasiscatalog_args');
+
+                if (!empty($args['limit'])) {
+                    if ($args['limit'] !== $post_data['oasiscatalog_args']['limit']) {
+                        $post_data['oasiscatalog_step'] = 0;
+                    } else {
+                        $post_data['oasiscatalog_step'] = (int)$this->config->get('oasiscatalog_step');
+                    }
+                }
+            }
+
             $this->model_setting_setting->editSetting('oasiscatalog', $post_data);
             $this->cache->delete('oasiscatalog');
             $this->session->data['success'] = $this->language->get('text_success');

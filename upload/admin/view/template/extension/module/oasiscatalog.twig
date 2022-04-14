@@ -323,6 +323,19 @@
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <div class="form-group">
+                                                    <div class="col-sm-12">
+                                                        <label class="col-sm-6 control-label" for="input-limit">{{ text_limit }}</label>
+                                                        <div class="col-sm-6">
+                                                            {% if limit %}
+                                                                <input type="number" name="limit" value="{{ limit }}" placeholder="" id="input-limit"
+                                                                       class="form-control" style="width: 120px;">
+                                                            {% else %}
+                                                                <input type="number" name="limit" value="" placeholder="" id="input-limit" class="form-control" style="width: 120px;">
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div class="col-sm-6">
                                                 <div class="form-group">

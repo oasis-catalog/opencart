@@ -85,11 +85,22 @@ Errors: " . $errors . PHP_EOL;
      */
     public function cronUpProduct()
     {
+        $this->load->model(self::ROUTE);
+
         $args = [
             'fieldset' => 'full',
         ];
         $args += $this->config->get('oasiscatalog_args');
         $data = [];
+        $limit = !empty($args['limit']) ? (int)$args['limit'] : 0;
+        $step = (int)$this->config->get('oasiscatalog_step');
+
+        if ( $limit > 0 ) {
+            $args['limit']  = $limit;
+            $args['offset'] = $step * $limit;
+        } else {
+            unset($args['limit']);
+        }
 
         if ($args['no_vat'] === '1') {
             $data['tax_class_id'] = $this->config->get('oasiscatalog_tax_class_id');
@@ -119,9 +130,17 @@ Errors: " . $errors . PHP_EOL;
             $this->mf_oasis = $this->getBrandsOasis();
 
             if ($this->products) {
+                $nextStep = ++ $step;
+
                 foreach ($this->products as $product) {
                     $this->product($product, $args, $data);
                 }
+            } else {
+                $nextStep = 0;
+            }
+
+            if (!empty($limit)) {
+                $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_step', $nextStep);
             }
         } catch (\Exception $exception) {
             die();
@@ -915,6 +934,7 @@ Errors: " . $errors . PHP_EOL;
     {
         if (isset($args['ids']) && $args['ids'] !== '') {
             $args['ids'] = $args['ids']['id'];
+            unset($args['limit'], $args['offset']);
         }
 
         return $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);

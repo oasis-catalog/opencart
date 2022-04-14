@@ -3,6 +3,29 @@
 class ModelExtensionModuleOasiscatalog extends Model
 {
 
+    public function setOption($store_id, $code, $key, $value)
+    {
+        if (!empty($code) && !empty($key)) {
+            if (is_array($value)) {
+                $serialized = 1;
+                $value = serialize($value);
+            } else {
+                $serialized = 0;
+            }
+
+            $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "setting 
+            WHERE `store_id` = '" . (int)$store_id . "' 
+                AND `code` = '" . $this->db->escape($code) . "'
+                AND `key` = '" . $this->db->escape($key) . "'");
+
+            if ($query->row) {
+                $this->db->query("UPDATE " . DB_PREFIX . "setting SET `value` = '" . $this->db->escape($value) . "', `serialized` = '" . $serialized . "' WHERE `setting_id` = '" . $query->row['setting_id'] . "'");
+            } else {
+                $this->db->query("INSERT INTO " . DB_PREFIX . "setting SET `store_id` = '" . (int)$store_id . "', `code` = '" . $this->db->escape($code) . "', `key` = '" . $this->db->escape($key) . "', `value` = '" . $this->db->escape($value) . "', `serialized` = '" . $serialized . "'");
+            }
+        }
+    }
+
     public function addOrder($data)
     {
         if (isset($data['order_id']) && isset($data['queue_id'])) {
