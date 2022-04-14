@@ -55,6 +55,7 @@ if ((int)str_replace('.', '', $version) < (int)str_replace('.', '', MIN_VERSION)
 }
 
 // Startup
+$version = substr($version, 0, 5);
 if (file_exists($root_dir . '/cli/' . $version . '/oasis_cli_framework.php')) {
 	require_once($root_dir . '/cli/' . $version . '/oasis_cli_framework.php');
 } else {
