@@ -336,6 +336,44 @@
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <div class="form-group">
+                                                    <div class="col-sm-12">
+                                                        <label class="col-sm-6 control-label" for="input-factor">{{ text_factor }}</label>
+                                                        <div class="col-sm-6">
+                                                            {% if factor %}
+                                                                <input type="number" name="factor" value="{{ factor }}" step="0.01" placeholder="" id="input-factor"
+                                                                       class="form-control" style="width: 120px;">
+                                                            {% else %}
+                                                                <input type="number" name="factor" value="" step="0.01" placeholder="" id="input-factor" class="form-control" style="width: 120px;">
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <div class="col-sm-12">
+                                                        <label class="col-sm-6 control-label" for="input-increase">{{ text_increase }}</label>
+                                                        <div class="col-sm-6">
+                                                            {% if increase %}
+                                                                <input type="number" name="increase" value="{{ increase }}" step="0.01" placeholder="" id="input-increase"
+                                                                       class="form-control" style="width: 120px;">
+                                                            {% else %}
+                                                                <input type="number" name="increase" value="" step="0.01" placeholder="" id="input-increase" class="form-control" style="width: 120px;">
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-sm-12">
+                                                    <label class="col-sm-6 control-label" for="input-dealer">{{ text_dealer }}</label>
+                                                    <div class="col-sm-6">
+                                                        <label class="control-label">
+                                                            {% if dealer %}
+                                                                <input type="checkbox" name="dealer" value="1" id="input-dealer" checked/>
+                                                            {% else %}
+                                                                <input type="checkbox" name="dealer" value="1" id="input-dealer"/>
+                                                            {% endif %}
+                                                        </label>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div class="col-sm-6">
                                                 <div class="form-group">

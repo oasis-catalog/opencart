@@ -12,6 +12,9 @@ class ControllerExtensionModuleOasisCli extends Controller
     private $var_size = 'Размер';
     private $cronUp = false;
     private $saveLog = false;
+    private $factor = null;
+    private $increase = null;
+    private $dealer = null;
     private const ROUTE = 'extension/module/oasiscatalog';
     private const API_V4 = 'v4/';
     private const API_V3 = 'v3/';
@@ -87,6 +90,9 @@ Errors: " . $errors . PHP_EOL;
     {
         $this->load->model(self::ROUTE);
 
+        $this->factor = (float)$this->config->get('oasiscatalog_factor');
+        $this->increase = (float)$this->config->get('oasiscatalog_increase');
+        $this->dealer = $this->config->get('oasiscatalog_dealer');
         $args = [
             'fieldset' => 'full',
         ];
@@ -316,12 +322,19 @@ Errors: " . $errors . PHP_EOL;
         if ($product_option) {
             $option_value_id = $product_option[0]['product_option_value'][0]['option_value_id'];
 
-            if ((float)$data['price'] < (float)$product_oasis->price) {
-                $product_option[0]['product_option_value'][0]['price'] = (float)$product_oasis->price - (float)$data['price'];
-            } elseif ((float)$data['price'] > (float)$product_oasis->price) {
-                $product_option[0]['product_option_value'][0]['price'] = (float)$data['price'] - (float)$product_oasis->price;
+            $price = $this->getCalculationPrice($product_oasis);
+
+            if ($data['model'] == $product_oasis->article) {
+                $data['price'] = $price;
+            }
+
+            if ((float)$data['price'] < $price) {
+                $product_option[0]['product_option_value'][0]['price'] = $price - (float)$data['price'];
+            } elseif ((float)$data['price'] > $price) {
+                $product_option[0]['product_option_value'][0]['price'] = (float)$data['price'] - $price;
                 $product_option[0]['product_option_value'][0]['price_prefix'] = '-';
             }
+            unset($price);
 
             if ($data['product_option']) {
                 foreach ($data['product_option'][0]['product_option_value'] as $key => $value) {
@@ -491,12 +504,11 @@ Errors: " . $errors . PHP_EOL;
                 ];
             }
             unset($language);
-
-            $product['price'] = $product_o->price;
         } else {
             $product['product_description'] = $this->model_catalog_product->getProductDescriptions($data['product_id']);
-            $product['price'] = $data['price'];
         }
+
+        $product['price'] = $this->getCalculationPrice($product_o);
 
         $product['model'] = $data['model'] ?? htmlspecialchars($product_o->article, ENT_QUOTES);
         $product['sku'] = $data['sku'] ?? '';
@@ -575,6 +587,27 @@ Errors: " . $errors . PHP_EOL;
         $product['product_layout'] = $data['product_layout'] ?? [0 => ''];
 
         return $product;
+    }
+
+    /**
+     * Get calculation price product
+     *
+     * @param $product
+     * @return float
+     */
+    public function getCalculationPrice($product)
+    {
+        $price = $this->dealer ? $product->discount_price : $product->price;
+
+        if (!empty($this->factor)) {
+            $price = $price * $this->factor;
+        }
+
+        if (!empty($this->increase)) {
+            $price = $price + $this->increase;
+        }
+
+        return (float)$price;
     }
 
     /**

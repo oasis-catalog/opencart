@@ -88,6 +88,18 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 }
             }
 
+            if (isset($this->request->post['factor']) && $this->request->post['factor'] !== '') {
+                $post_data['oasiscatalog_factor'] = $this->request->post['factor'];
+            }
+
+            if (isset($this->request->post['increase']) && $this->request->post['increase'] !== '') {
+                $post_data['oasiscatalog_increase'] = $this->request->post['increase'];
+            }
+
+            if (isset($this->request->post['dealer']) && $this->request->post['dealer'] !== '') {
+                $post_data['oasiscatalog_dealer'] = $this->request->post['dealer'];
+            }
+
             $this->model_setting_setting->editSetting('oasiscatalog', $post_data);
             $this->cache->delete('oasiscatalog');
             $this->session->data['success'] = $this->language->get('text_success');
@@ -137,6 +149,9 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                     $data += $args;
                 }
                 $data['tax_class_id'] = $this->config->get('oasiscatalog_tax_class_id');
+                $data['factor'] = $this->config->get('oasiscatalog_factor');
+                $data['increase'] = $this->config->get('oasiscatalog_increase');
+                $data['dealer'] = $this->config->get('oasiscatalog_dealer');
                 $cats = $this->config->get('oasiscatalog_category');
 
                 if ($cats) {
