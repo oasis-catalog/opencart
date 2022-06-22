@@ -32,7 +32,7 @@ class ControllerExtensionModuleOasisCli extends Controller
 
         $params = [
             'short' => 'k:u',
-            'long' => ['key:', 'up'],
+            'long'  => ['key:', 'up'],
         ];
 
         // Default values
@@ -101,8 +101,8 @@ Errors: " . $errors . PHP_EOL;
         $limit = !empty($args['limit']) ? (int)$args['limit'] : 0;
         $step = (int)$this->config->get('oasiscatalog_step');
 
-        if ( $limit > 0 ) {
-            $args['limit']  = $limit;
+        if ($limit > 0) {
+            $args['limit'] = $limit;
             $args['offset'] = $step * $limit;
         } else {
             unset($args['limit']);
@@ -136,7 +136,7 @@ Errors: " . $errors . PHP_EOL;
             $this->mf_oasis = $this->getBrandsOasis();
 
             if ($this->products) {
-                $nextStep = ++ $step;
+                $nextStep = ++$step;
 
                 foreach ($this->products as $product) {
                     $this->product($product, $args, $data);
@@ -373,7 +373,7 @@ Errors: " . $errors . PHP_EOL;
 
         foreach ($images as $key => $value) {
             $data['product_image'][$key] = [
-                'image' => $value['image'],
+                'image'      => $value['image'],
                 'sort_order' => $value['sort_order'],
             ];
         }
@@ -399,16 +399,16 @@ Errors: " . $errors . PHP_EOL;
         if (empty($date_modified)) {
             $args = [
                 'product_id_oasis' => $product_oasis->id,
-                'rating' => $product_oasis->rating,
-                'option_value_id' => $product_option_value['product_option_value_id'] ?? '',
-                'product_id' => $product_info['product_id'],
+                'rating'           => $product_oasis->rating,
+                'option_value_id'  => $product_option_value['product_option_value_id'] ?? '',
+                'product_id'       => $product_info['product_id'],
             ];
             $this->model_extension_module_oasiscatalog->addOasisProduct($args);
         } else {
             $args = [
-                'rating' => $product_oasis->rating,
+                'rating'          => $product_oasis->rating,
                 'option_value_id' => $product_option_value['product_option_value_id'] ?? '',
-                'product_id' => $product_info['product_id'],
+                'product_id'      => $product_info['product_id'],
             ];
             $this->model_extension_module_oasiscatalog->editOasisProduct($product_oasis->id, $args);
         }
@@ -439,12 +439,12 @@ Errors: " . $errors . PHP_EOL;
                 if (isset($image->superbig)) {
                     $data_img = [
                         'folder_name' => 'catalog/oasis/products/' . end($data['product_category']),
-                        'img_url' => $image->superbig,
-                        'count' => 0,
+                        'img_url'     => $image->superbig,
+                        'count'       => 0,
                     ];
 
                     $data['product_image'][] = [
-                        'image' => $this->saveImg($data_img),
+                        'image'      => $this->saveImg($data_img),
                         'sort_order' => '',
                     ];
                 }
@@ -467,9 +467,9 @@ Errors: " . $errors . PHP_EOL;
 
         $args = [
             'product_id_oasis' => $product->id,
-            'rating' => $product->rating,
-            'option_value_id' => $product_option_value['product_option_value_id'] ?? '',
-            'product_id' => $product_id,
+            'rating'           => $product->rating,
+            'option_value_id'  => $product_option_value['product_option_value_id'] ?? '',
+            'product_id'       => $product_id,
         ];
         $this->model_extension_module_oasiscatalog->addOasisProduct($args);
 
@@ -495,12 +495,12 @@ Errors: " . $errors . PHP_EOL;
 
             foreach ($languages as $language) {
                 $product['product_description'][$language['language_id']] = [
-                    'name' => htmlspecialchars($product_o->full_name, ENT_QUOTES),
-                    'description' => htmlspecialchars('<p>' . nl2br($product_o->description) . '</p>', ENT_QUOTES),
-                    'meta_title' => htmlspecialchars($product_o->full_name, ENT_QUOTES),
+                    'name'             => htmlspecialchars($product_o->full_name, ENT_QUOTES),
+                    'description'      => htmlspecialchars('<p>' . nl2br($product_o->description) . '</p>', ENT_QUOTES),
+                    'meta_title'       => htmlspecialchars($product_o->full_name, ENT_QUOTES),
                     'meta_description' => '',
-                    'meta_keyword' => '',
-                    'tag' => '',
+                    'meta_keyword'     => '',
+                    'tag'              => '',
                 ];
             }
             unset($language);
@@ -684,11 +684,11 @@ Errors: " . $errors . PHP_EOL;
 
         foreach ($languages as $language) {
             $data['category_description'][$language['language_id']] = [
-                'name' => $category->name,
-                'description' => '',
-                'meta_title' => $category->name,
+                'name'             => $category->name,
+                'description'      => '',
+                'meta_title'       => $category->name,
                 'meta_description' => '',
-                'meta_keyword' => '',
+                'meta_keyword'     => '',
             ];
         }
         unset($language);
@@ -755,8 +755,8 @@ Errors: " . $errors . PHP_EOL;
                         unset($key, $value);
                     } else {
                         $data[] = [
-                            'name' => $attr['name'],
-                            'attribute_id' => $attr['attribute_id'],
+                            'name'                          => $attr['name'],
+                            'attribute_id'                  => $attr['attribute_id'],
                             'product_attribute_description' => $this->toLanguagesArr($languages, 'text', $attribute->value),
                         ];
                     }
@@ -766,8 +766,8 @@ Errors: " . $errors . PHP_EOL;
                     $data_attribute['sort_order'] = '';
 
                     $data[] = [
-                        'name' => $attribute->name,
-                        'attribute_id' => $this->model_catalog_attribute->addAttribute($data_attribute),
+                        'name'                          => $attribute->name,
+                        'attribute_id'                  => $this->model_catalog_attribute->addAttribute($data_attribute),
                         'product_attribute_description' => $this->toLanguagesArr($languages, 'text', $attribute->value),
                     ];
                 }
@@ -805,9 +805,9 @@ Errors: " . $errors . PHP_EOL;
 
         $data_img = [
             'folder_name' => 'catalog/oasis/manufacturers',
-            'img_url' => $brand->logotype,
-            'img_name' => $brand->slug,
-            'count' => 0,
+            'img_url'     => $brand->logotype,
+            'img_name'    => $brand->slug,
+            'count'       => 0,
         ];
 
         $data['image'] = $this->saveImg($data_img);
@@ -834,10 +834,10 @@ Errors: " . $errors . PHP_EOL;
 
         foreach ($option['value'] as $item) {
             $data['option_value'][] = [
-                'option_value_id' => '',
+                'option_value_id'          => '',
                 'option_value_description' => $this->toLanguagesArr($languages, 'name', $item),
-                'image' => '',
-                'sort_order' => '',
+                'image'                    => '',
+                'sort_order'               => '',
             ];
         }
         unset($item);
@@ -862,10 +862,10 @@ Errors: " . $errors . PHP_EOL;
         $languages = $this->model_localisation_language->getLanguages();
 
         $option_values[] = [
-            'option_value_id' => '',
+            'option_value_id'          => '',
             'option_value_description' => $this->toLanguagesArr($languages, 'name', $value),
-            'image' => '',
-            'sort_order' => '',
+            'image'                    => '',
+            'sort_order'               => '',
         ];
 
         $data['option_value'] = $option_values;
@@ -880,26 +880,26 @@ Errors: " . $errors . PHP_EOL;
     {
         $option[0] = [
             'product_option_id' => '',
-            'name' => $data['option']['name'],
-            'option_id' => $data['option']['option_id'],
-            'type' => $data['option']['type'],
-            'required' => 1,
+            'name'              => $data['option']['name'],
+            'option_id'         => $data['option']['option_id'],
+            'type'              => $data['option']['type'],
+            'required'          => 1,
         ];
 
         $option[0]['product_option_value'] = [];
 
         foreach ($data['values'] as $value) {
             $option[0]['product_option_value'][] = [
-                'option_value_id' => $value['option_value_id'],
+                'option_value_id'         => $value['option_value_id'],
                 'product_option_value_id' => '',
-                'quantity' => $value['quantity'],
-                'subtract' => 1,
-                'price_prefix' => '+',
-                'price' => '',
-                'points_prefix' => '+',
-                'points' => '',
-                'weight_prefix' => '+',
-                'weight' => '',
+                'quantity'                => $value['quantity'],
+                'subtract'                => 1,
+                'price_prefix'            => '+',
+                'price'                   => '',
+                'points_prefix'           => '+',
+                'points'                  => '',
+                'weight_prefix'           => '+',
+                'weight'                  => '',
             ];
         }
         unset($value);
@@ -1152,7 +1152,7 @@ Errors: " . $errors . PHP_EOL;
     public function curl_query($version, $type, array $args = [])
     {
         $args_pref = [
-            'key' => API_KEY,
+            'key'    => API_KEY,
             'format' => 'json',
         ];
         $args = array_merge($args_pref, $args);
@@ -1188,7 +1188,16 @@ Errors: " . $errors . PHP_EOL;
         $img = $this->imgFolder($data['folder_name']) . $data['img_name'] . $count . '.' . $ext['extension'];
 
         if (!file_exists($img)) {
-            $pic = file_get_contents($data['img_url'], true, stream_context_create(['http' => ['ignore_errors' => true, 'follow_location' => true]]));
+            $pic = file_get_contents($data['img_url'], true, stream_context_create([
+                'http' => [
+                    'ignore_errors'   => true,
+                    'follow_location' => true
+                ],
+                'ssl'  => [
+                    'verify_peer'      => false,
+                    'verify_peer_name' => false,
+                ],
+            ]));
 
             if (!preg_match("/200|301/", $http_response_header[0])) {
                 return false;
@@ -1223,88 +1232,88 @@ Errors: " . $errors . PHP_EOL;
     protected function transliter($str): string
     {
         $arr_trans = [
-            'А' => 'A',
-            'Б' => 'B',
-            'В' => 'V',
-            'Г' => 'G',
-            'Д' => 'D',
-            'Е' => 'E',
-            'Ё' => 'E',
-            'Ж' => 'J',
-            'З' => 'Z',
-            'И' => 'I',
-            'Й' => 'Y',
-            'К' => 'K',
-            'Л' => 'L',
-            'М' => 'M',
-            'Н' => 'N',
-            'О' => 'O',
-            'П' => 'P',
-            'Р' => 'R',
-            'С' => 'S',
-            'Т' => 'T',
-            'У' => 'U',
-            'Ф' => 'F',
-            'Х' => 'H',
-            'Ц' => 'TS',
-            'Ч' => 'CH',
-            'Ш' => 'SH',
-            'Щ' => 'SCH',
-            'Ъ' => '',
-            'Ы' => 'YI',
-            'Ь' => '',
-            'Э' => 'E',
-            'Ю' => 'YU',
-            'Я' => 'YA',
-            'а' => 'a',
-            'б' => 'b',
-            'в' => 'v',
-            'г' => 'g',
-            'д' => 'd',
-            'е' => 'e',
-            'ё' => 'e',
-            'ж' => 'j',
-            'з' => 'z',
-            'и' => 'i',
-            'й' => 'y',
-            'к' => 'k',
-            'л' => 'l',
-            'м' => 'm',
-            'н' => 'n',
-            'о' => 'o',
-            'п' => 'p',
-            'р' => 'r',
-            'с' => 's',
-            'т' => 't',
-            'у' => 'u',
-            'ф' => 'f',
-            'х' => 'h',
-            'ц' => 'ts',
-            'ч' => 'ch',
-            'ш' => 'sh',
-            'щ' => 'sch',
-            'ъ' => 'y',
-            'ы' => 'yi',
-            'ь' => '',
-            'э' => 'e',
-            'ю' => 'yu',
-            'я' => 'ya',
-            '.' => '-',
-            ' ' => '-',
-            '?' => '-',
-            '/' => '-',
+            'А'  => 'A',
+            'Б'  => 'B',
+            'В'  => 'V',
+            'Г'  => 'G',
+            'Д'  => 'D',
+            'Е'  => 'E',
+            'Ё'  => 'E',
+            'Ж'  => 'J',
+            'З'  => 'Z',
+            'И'  => 'I',
+            'Й'  => 'Y',
+            'К'  => 'K',
+            'Л'  => 'L',
+            'М'  => 'M',
+            'Н'  => 'N',
+            'О'  => 'O',
+            'П'  => 'P',
+            'Р'  => 'R',
+            'С'  => 'S',
+            'Т'  => 'T',
+            'У'  => 'U',
+            'Ф'  => 'F',
+            'Х'  => 'H',
+            'Ц'  => 'TS',
+            'Ч'  => 'CH',
+            'Ш'  => 'SH',
+            'Щ'  => 'SCH',
+            'Ъ'  => '',
+            'Ы'  => 'YI',
+            'Ь'  => '',
+            'Э'  => 'E',
+            'Ю'  => 'YU',
+            'Я'  => 'YA',
+            'а'  => 'a',
+            'б'  => 'b',
+            'в'  => 'v',
+            'г'  => 'g',
+            'д'  => 'd',
+            'е'  => 'e',
+            'ё'  => 'e',
+            'ж'  => 'j',
+            'з'  => 'z',
+            'и'  => 'i',
+            'й'  => 'y',
+            'к'  => 'k',
+            'л'  => 'l',
+            'м'  => 'm',
+            'н'  => 'n',
+            'о'  => 'o',
+            'п'  => 'p',
+            'р'  => 'r',
+            'с'  => 's',
+            'т'  => 't',
+            'у'  => 'u',
+            'ф'  => 'f',
+            'х'  => 'h',
+            'ц'  => 'ts',
+            'ч'  => 'ch',
+            'ш'  => 'sh',
+            'щ'  => 'sch',
+            'ъ'  => 'y',
+            'ы'  => 'yi',
+            'ь'  => '',
+            'э'  => 'e',
+            'ю'  => 'yu',
+            'я'  => 'ya',
+            '.'  => '-',
+            ' '  => '-',
+            '?'  => '-',
+            '/'  => '-',
             '\\' => '-',
-            '*' => '-',
-            ':' => '-',
-            '>' => '-',
-            '|' => '-',
+            '*'  => '-',
+            ':'  => '-',
+            '>'  => '-',
+            '|'  => '-',
             '\'' => '',
-            '(' => '',
-            ')' => '',
-            '!' => '',
-            '@' => '',
-            '%' => '',
-            '`' => '',
+            '('  => '',
+            ')'  => '',
+            '!'  => '',
+            '@'  => '',
+            '%'  => '',
+            '`'  => '',
         ];
         $str = str_replace(['-', '+', '.', '?', '/', '\\', '*', ':', '*', '|'], ' ', $str);
         $str = htmlspecialchars_decode($str);
