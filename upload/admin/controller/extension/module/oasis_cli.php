@@ -11,7 +11,9 @@ class ControllerExtensionModuleOasisCli extends Controller
     private $products = [];
     private $var_size = 'Размер';
     private $cronUp = false;
+    private $debug = true;
     private $saveLog = false;
+    private $logCounter = '';
     private $factor = null;
     private $increase = null;
     private $dealer = null;
@@ -137,10 +139,15 @@ Errors: " . $errors . PHP_EOL;
 
             if ($this->products) {
                 $nextStep = ++$step;
+                $totalProduct = count($this->products);
+                $i = 1;
 
                 foreach ($this->products as $product) {
+                    $this->logCounter = $totalProduct . '-' . $i;
                     $this->product($product, $args, $data);
+                    $i++;
                 }
+                unset($totalProduct, $i);
             } else {
                 $nextStep = 0;
             }
@@ -209,7 +216,7 @@ Errors: " . $errors . PHP_EOL;
                 }
                 unset($key, $value);
             }
-            $this->saveToLog('cron', 'Stock updated');
+            $this->saveToLog('null', 'Stock updated');
         } catch (\Exception $exception) {
             die();
         }
@@ -249,6 +256,8 @@ Errors: " . $errors . PHP_EOL;
                 }
 
                 if (!$parent_product) {
+                    sleep(1);
+                    usleep(100000);
                     $parent_product_oasis = $this->getProductOasis($args);
                     $parent_product = $parent_product_oasis ? array_shift($parent_product_oasis) : false;
                 }
@@ -263,7 +272,7 @@ Errors: " . $errors . PHP_EOL;
 
                     $this->editProduct($product_oc[0], $product, $data['product_option']);
                 } else {
-                    $this->saveToLog($product->id, 'parent_id = ' . $args['ids']['id'] . ' | Error. Product ID not found!');
+                    $this->saveToLog($product->id, 'parent_id = ' . $args['ids']['id'] . ' | Error. Product ID not found!', 'oasisError');
                 }
                 unset($product_oc, $parent_product_oasis);
             }
@@ -287,7 +296,7 @@ Errors: " . $errors . PHP_EOL;
         if (!$product_oc) {
             $product_id = $this->addProduct($data, $product);
 
-            $this->saveToLog($product->id, 'Product add');
+            $this->saveToLog($product->id, 'add OCId=' . $product_id);
         } else {
             $this->editProduct($product_oc[0], $product, $data['product_option'] ?? []);
             $product_id = $product_oc[0]['product_id'];
@@ -413,7 +422,7 @@ Errors: " . $errors . PHP_EOL;
             $this->model_extension_module_oasiscatalog->editOasisProduct($product_oasis->id, $args);
         }
 
-        $this->saveToLog($product_oasis->id, 'Product updated');
+        $this->saveToLog($product_oasis->id, 'updated OCId=' . $product_info['product_id']);
 
         return true;
     }
@@ -1330,26 +1339,25 @@ Errors: " . $errors . PHP_EOL;
     /**
      * @param $id
      * @param $msg
+     * @param string $fileName
      */
-    protected function saveToLog($id, $msg)
+    protected function saveToLog($id, $msg, string $fileName = 'oasisLog')
     {
-        if ($this->saveLog) {
-            $str = date('Y-m-d H:i:s') . ' | product_id=' . $id . ' | ' . $msg . PHP_EOL;
-            $filename = DIR_LOGS . 'oasiscatalog_log.txt';
-            if (!file_exists($filename)) {
-                $fp = fopen($filename, 'wb');
-                fwrite($fp, $str);
-                fclose($fp);
-            } else {
-                file_put_contents($filename, $str, FILE_APPEND | LOCK_EX);
+        if ($this->debug) {
+            $str = !empty($this->logCounter) ? $this->logCounter . ' | ' : '';
+            $str .= date('Y-m-d H:i:s') . ' | OAId=' . $id . ' | ' . $msg . PHP_EOL;
+            print_r($str);
+
+            if ($this->saveLog) {
+                $file = DIR_LOGS . $fileName . '.txt';
+                if (!file_exists($file)) {
+                    $fp = fopen($file, 'wb');
+                    fwrite($fp, $str);
+                    fclose($fp);
+                } else {
+                    file_put_contents($file, $str, FILE_APPEND | LOCK_EX);
+                }
             }
         }
     }
-}
-
-function d($data)
-{
-    echo "\r\n";
-    print_r($data);
-    echo "\r\n";
 }
