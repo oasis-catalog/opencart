@@ -51,16 +51,16 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 $post_data['oasiscatalog_args']['rating'] = $this->request->post['rating'];
             }
 
-            if (isset($this->request->post['warehouse_moscow']) && $this->request->post['warehouse_moscow'] !== '') {
-                $post_data['oasiscatalog_args']['warehouse_moscow'] = $this->request->post['warehouse_moscow'];
+            if (isset($this->request->post['moscow']) && $this->request->post['moscow'] !== '') {
+                $post_data['oasiscatalog_args']['moscow'] = $this->request->post['moscow'];
             }
 
-            if (isset($this->request->post['warehouse_europe']) && $this->request->post['warehouse_europe'] !== '') {
-                $post_data['oasiscatalog_args']['warehouse_europe'] = $this->request->post['warehouse_europe'];
+            if (isset($this->request->post['europe']) && $this->request->post['europe'] !== '') {
+                $post_data['oasiscatalog_args']['europe'] = $this->request->post['europe'];
             }
 
-            if (isset($this->request->post['remote_warehouse']) && $this->request->post['remote_warehouse'] !== '') {
-                $post_data['oasiscatalog_args']['remote_warehouse'] = $this->request->post['remote_warehouse'];
+            if (isset($this->request->post['remote']) && $this->request->post['remote'] !== '') {
+                $post_data['oasiscatalog_args']['remote'] = $this->request->post['remote'];
             }
 
             if (isset($this->request->post['category']) && $this->request->post['category'] !== '') {
