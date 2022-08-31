@@ -136,6 +136,15 @@ Errors: " . $errors . PHP_EOL;
 
             $this->products = $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);
             $this->mf_oasis = $this->getBrandsOasis();
+            $stat = $this->getStatProducts();
+            $progressItem = (int)$this->config->get('oasiscatalog_progress_item');
+            $progressStepItem = 0;
+            $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_total', $stat->products);
+            $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_step_item', 0);
+
+            if ($limit > 0) {
+                $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_step_total', count($this->products));
+            }
 
             if ($this->products) {
                 $nextStep = ++$step;
@@ -146,6 +155,14 @@ Errors: " . $errors . PHP_EOL;
                     $this->logCounter = $totalProduct . '-' . $i;
                     $this->product($product, $args, $data);
                     $i++;
+
+                    $progressItem++;
+                    $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_item', $progressItem);
+
+                    if (!empty($limit)) {
+                        $progressStepItem++;
+                        $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_step_item', $progressStepItem);
+                    }
                 }
                 unset($totalProduct, $i);
             } else {
@@ -154,7 +171,11 @@ Errors: " . $errors . PHP_EOL;
 
             if (!empty($limit)) {
                 $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_step', $nextStep);
+            } else {
+                $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_item', $stat->products);
             }
+
+            $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_date', date('Y-m-d H:i:s'));
         } catch (\Exception $exception) {
             die();
         }
@@ -1085,6 +1106,65 @@ Errors: " . $errors . PHP_EOL;
         }
 
         return false;
+    }
+
+    /**
+     * Get oasis stat
+     *
+     * @return bool|mixed
+     */
+    public function getStatProducts()
+    {
+        $data_args = $this->config->get('oasiscatalog_args');
+        $data = [
+            'not_on_order' => $data_args['not_on_order'] ?? '',
+            'price_from'   => $data_args['price_from'] ?? '',
+            'price_to'     => $data_args['price_to'] ?? '',
+            'rating'       => $data_args['rating'] ?? '0,1,2,3,4,5',
+            'moscow'       => $data_args['moscow'] ?? '',
+            'europe'       => $data_args['europe'] ?? '',
+            'remote'       => $data_args['remote'] ?? '',
+        ];
+
+        $category = $this->config->get('oasiscatalog_category');
+
+        if (empty($category)) {
+            $data['category'] = implode(',', array_keys($this->getOasisMainCategories()));
+            sleep(1);
+        } else {
+            $data['category'] = $category;
+        }
+
+        foreach ($data as $key => $value) {
+            if ($value) {
+                $args[$key] = $value;
+            }
+        }
+
+        return $this->curl_query(self::API_V4, 'stat', $args);
+    }
+
+    /**
+     * Get oasis main categories - level = 1
+     *
+     * @param null $categories
+     * @return array
+     */
+    public function getOasisMainCategories($categories = null): array
+    {
+        $result = [];
+
+        if (!$categories) {
+            $categories = $this->getCategoriesOasis();
+        }
+
+        foreach ($categories as $category) {
+            if ($category->level === 1) {
+                $result[$category->id] = $category->name;
+            }
+        }
+
+        return $result;
     }
 
     /**

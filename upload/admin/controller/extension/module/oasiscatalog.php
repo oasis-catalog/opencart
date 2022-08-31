@@ -100,6 +100,10 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 $post_data['oasiscatalog_dealer'] = $this->request->post['dealer'];
             }
 
+            $post_data['oasiscatalog_progress_total'] = (int)$this->config->get('oasiscatalog_progress_total');
+            $post_data['oasiscatalog_progress_item'] = (int)$this->config->get('oasiscatalog_progress_item');
+            $post_data['oasiscatalog_progress_date'] = $this->config->get('oasiscatalog_progress_date');
+
             $this->model_setting_setting->editSetting('oasiscatalog', $post_data);
             $this->cache->delete('oasiscatalog');
             $this->session->data['success'] = $this->language->get('text_success');
@@ -152,6 +156,32 @@ class ControllerExtensionModuleOasiscatalog extends Controller
                 $data['factor'] = $this->config->get('oasiscatalog_factor');
                 $data['increase'] = $this->config->get('oasiscatalog_increase');
                 $data['dealer'] = $this->config->get('oasiscatalog_dealer');
+
+                $progressTotal = (int)$this->config->get('oasiscatalog_progress_total');
+                $progressItem = (int)$this->config->get('oasiscatalog_progress_item');
+                $progressStepTotal = (int)$this->config->get('oasiscatalog_progress_step_total');
+                $progressStepItem = (int)$this->config->get('oasiscatalog_progress_step_item');
+                $data['progressDate'] = $this->config->get('oasiscatalog_progress_date');
+                $data['limit'] = !empty($args['limit']) ? (int)$args['limit'] : 0;
+
+                if (!empty($data['limit'])) {
+                    $step = (int)$this->config->get('oasiscatalog_step');
+                    $stepTotal = !empty($progressTotal) ? ceil($progressTotal / $data['limit']) : 0;
+                    $data['text_progress_step'] = sprintf($this->language->get('text_progress_step'), ++$step, $stepTotal);
+                }
+
+                if (!empty($progressTotal) && !empty($progressItem)) {
+                    $data['percentTotal'] = round(($progressItem / $progressTotal) * 100);
+                } else {
+                    $data['percentTotal'] = 0;
+                }
+
+                if (!empty($progressStepTotal) && !empty($progressStepItem)) {
+                    $data['percentStep'] = round(($progressStepItem / $progressStepTotal) * 100);
+                } else {
+                    $data['percentStep'] = 0;
+                }
+
                 $cats = $this->config->get('oasiscatalog_category');
 
                 if ($cats) {
