@@ -8,6 +8,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     private $error = [];
     private $treeCats = '';
     private const ROUTE = 'extension/module/oasiscatalog';
+    private const VERSION_MODULE = '1.9';
 
     public function __construct($registry)
     {
@@ -142,6 +143,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
         $data['user_id'] = $this->config->get('oasiscatalog_user_id');
         $data['cron_product'] = 'php ' . realpath(str_replace('admin', '', DIR_APPLICATION)) . DIRECTORY_SEPARATOR . 'cli' . DIRECTORY_SEPARATOR . 'oasis_cli.php --key=' . CRON_KEY;
         $data['cron_stock'] = $data['cron_product'] . ' --up';
+        $data['version'] = self::VERSION_MODULE;
 
         if ($data['api_key']) {
             $currencies = $this->getCurrenciesOasis();
