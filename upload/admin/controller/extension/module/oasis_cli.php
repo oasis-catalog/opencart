@@ -78,10 +78,23 @@ Errors: " . $errors . PHP_EOL;
 
     public function index()
     {
-        if ($this->cronUp) {
-            $this->cronUpStock();
-        } else {
-            $this->cronUpProduct();
+        try {
+            $dir_lock = $this->getOrCreateDir(DIR_STORAGE . 'process_lock');
+
+            $lock = fopen($dir_lock . '/start.lock', 'w');
+            if (!($lock && flock($lock, LOCK_EX | LOCK_NB))) {
+                throw new Exception('Already running oasis');
+            }
+
+            if ($this->cronUp) {
+                $this->cronUpStock();
+            } else {
+                $this->cronUpProduct();
+            }
+
+        } catch (Exception $e) {
+            echo $e->getMessage() . PHP_EOL;
+            exit();
         }
     }
 
@@ -1274,7 +1287,7 @@ Errors: " . $errors . PHP_EOL;
             $data['img_name'] = $ext['filename'];
         }
 
-        $img = $this->imgFolder($data['folder_name']) . $data['img_name'] . $count . '.' . $ext['extension'];
+        $img = $this->getOrCreateDir(DIR_IMAGE . $data['folder_name'] . '/') . $data['img_name'] . $count . '.' . $ext['extension'];
 
         if (!file_exists($img)) {
             $pic = file_get_contents($data['img_url'], true, stream_context_create([
@@ -1298,17 +1311,21 @@ Errors: " . $errors . PHP_EOL;
     }
 
     /**
-     * @param $folder
-     * @return bool|string
+     * @param $path
      */
-    protected function imgFolder($folder)
+    protected function getOrCreateDir($path)
     {
-        $path = DIR_IMAGE . $folder . '/';
-        if (!file_exists($path)) {
-            $create = mkdir($path, 0755, true);
-            if (!$create) {
-                return false;
+        try {
+            if (!file_exists($path)) {
+                $create = mkdir($path, 0755, true);
+                if (!$create) {
+                    throw new Exception('Failed to create directory: ' . $path);
+                }
             }
+
+        } catch (Exception $e) {
+            echo $e->getMessage() . PHP_EOL;
+            exit();
         }
 
         return $path;
