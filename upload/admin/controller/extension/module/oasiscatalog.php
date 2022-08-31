@@ -8,7 +8,7 @@ class ControllerExtensionModuleOasiscatalog extends Controller
     private $error = [];
     private $treeCats = '';
     private const ROUTE = 'extension/module/oasiscatalog';
-    private const VERSION_MODULE = '1.9';
+    private const VERSION_MODULE = '1.5';
 
     public function __construct($registry)
     {
