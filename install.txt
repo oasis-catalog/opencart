@@ -3,7 +3,7 @@
 -------
 - Для установки модуля через установщик расширений необходимо предварительно установить модуль Localcopy - https://ocmod.shop/localcopy
 
-- Скачайте архив «oasiscatalog.ocmod.zip» из последнего релиза
+- Скачайте архив «oasiscatalog.ocmod.zip» из ветки https://github.com/oasis-catalog/opencart/tree/v.3.x
 
 - Перейдите в раздел Модули -> Установка расширений и загрузите расширение oasiscatalog.ocmod.zip.
 
