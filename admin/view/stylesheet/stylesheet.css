@@ -1,0 +1,132 @@
+/*.progress-notice {*/
+/*    background: #fff;*/
+/*    border: 1px solid #c3c4c7;*/
+/*    border-left-width: 4px;*/
+/*    box-shadow: 0 1px 1px rgb(0 0 0 / 4%);*/
+/*    margin: 5px 15px 2px;*/
+/*    padding: 1px 12px;*/
+/*    border-left-color: #2e78ff;*/
+/*}*/
+
+/*.progress-row {*/
+/*    display: flex;*/
+/*    flex-flow: row wrap;*/
+/*    justify-content: start;*/
+/*    align-items: center;*/
+/*}*/
+
+/*.progress-label {*/
+/*    width: 30%;*/
+/*    min-width: 300px;*/
+/*}*/
+
+/*.progress-container {*/
+/*    display: flex;*/
+/*    align-items: center;*/
+/*    justify-content: center;*/
+/*    width: 70%;*/
+/*    margin-top: 20px;*/
+/*    margin-bottom: 20px;*/
+/*    height: 100%;*/
+/*    min-width: 100px;*/
+/*}*/
+
+/*.progress-bar {*/
+/*    height: 16px;*/
+/*    width: 100rem;*/
+/*    border-radius: 2px;*/
+/*    background: #f0f0f1;*/
+/*    color: #fff;*/
+/*}*/
+
+/*.progress-bar .progress {*/
+/*    height: 100%;*/
+/*    border-radius: 0.2rem;*/
+/*    background: #228b09;*/
+/*    transition: width 0.4s ease;*/
+/*    text-align: center;*/
+/*}*/
+
+.wd-120 {
+    width: 120px;
+}
+
+label.input-category {
+    text-align: left;
+}
+
+.jquery-tree {
+    list-style: none;
+}
+
+.jquery-tree ul {
+    list-style: none;
+}
+
+.jquery-tree-handle {
+    cursor: pointer;
+    width: 10px;
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: top;
+    padding: 0;
+    margin: 0;
+}
+
+.jquery-tree-collapsed ul {
+    display: none;
+}
+
+.jquery-tree-collapseall,
+.jquery-tree-expandall {
+    cursor: pointer;
+}
+
+.jquery-tree-collapseall {
+    margin-right: 1em;
+}
+
+.jquery-tree input {
+    display: none;
+    /*position: absolute;*/
+    /*left: -1000px;*/
+}
+
+.jquery-tree-leaf {
+    padding-left: 20px;
+}
+
+.jquery-tree-node {
+    padding-left: 10px;
+}
+
+.jquery-tree-title {
+    display: inline-block;
+}
+
+.jquery-tree-checked-partial,
+.jquery-tree-checked,
+.jquery-tree-unchecked {
+    background-position: 5px 50%;
+    background-repeat: no-repeat;
+    cursor: default;
+    padding-left: 25px;
+    margin: 0;
+}
+
+.jquery-tree-checked-partial {
+    background-image: url('../image/checkbox-partial.png');
+}
+
+.jquery-tree-checked {
+    background-image: url('../image/checkbox-checked.png');
+}
+
+.jquery-tree-unchecked {
+    background-image: url('../image/checkbox-unchecked.png');
+}
+
+.jquery-tree-node label,
+.jquery-tree-handle {
+    -moz-user-select: none;
+}

@@ -1,355 +1,92 @@
 <?php
-#!/usr/bin/php
+
+namespace Opencart\Admin\Controller\Extension\Oasis;
+
+use Opencart\System\Engine\Controller;
+use Exception;
 
 /**
- * Class ControllerExtensionModuleOasisCli
+ * @property object $config
+ * @property object $load
+ * @property object $model_catalog_attribute
+ * @property object $model_catalog_attribute_group
+ * @property object $model_catalog_category
+ * @property object $model_catalog_manufacturer
+ * @property object $model_catalog_product
+ * @property object $model_extension_oasiscatalog_module_oasis
+ * @property object $model_localisation_language
+ * @property object $model_catalog_option
+ * @property object $model_setting_store
  */
-class ControllerExtensionModuleOasisCli extends Controller
+class Main extends Controller
 {
-    private $cat_oasis = [];
-    private $mf_oasis = [];
-    private $products = [];
-    private $var_size = 'Размер';
-    private $cronUp = false;
-    private $debug = true;
-    private $saveLog = false;
-    private $logCounter = '';
-    private $factor = null;
-    private $increase = null;
-    private $dealer = null;
-    private const ROUTE = 'extension/module/oasiscatalog';
-    private const API_V4 = 'v4/';
-    private const API_V3 = 'v3/';
-    private const API_PRODUCTS = 'products';
+    private array $cat_oasis = [];
+    public string $var_size = 'Размер';
+    private bool $debug = true;
+    private bool $saveLog = false;
+    public string $logCounter = '';
+    private float $factor;
+    private float $increase;
+    private bool $dealer;
+    private const ROUTE = 'extension/oasiscatalog/module/oasis';
 
-    /**
-     * ControllerExtensionModuleOasisCli constructor.
-     *
-     * @param $registry
-     * @throws Exception
-     */
     public function __construct($registry)
     {
         parent::__construct($registry);
 
-        $params = [
-            'short' => 'k:u',
-            'long'  => ['key:', 'up'],
-        ];
-
-        // Default values
-        $errors = '';
-        $options = getopt($params['short'], $params['long']);
-
-        if (isset($options['key']) || isset($options['k'])) {
-            define('CRON_KEY', $options['key'] ?? $options['k']);
-        } else {
-            $errors = 'key required';
-        }
-
-        if (isset($options['up']) || isset($options['u'])) {
-            $this->cronUp = true;
-        }
-
-        if ($errors) {
-            $help = "
-usage: php /path/to/site/cli/oasis_cli.php [-k|--key=secret] [-u|--up]
-
-Options:
-        -k  --key      substitute your secret key from the Oasis module
-        -u  --up       specify this key to use the update
-Example import products:
-        php /path/to/site/cli/oasis_cli.php --key=secret
-Example update stock (quantity) products:
-        php /path/to/site/cli/oasis_cli.php --key=secret --up
-
-Errors: " . $errors . PHP_EOL;
-            die($help);
-        }
-
-        $this->load->model('setting/setting');
-
-        define('API_KEY', $this->config->get('oasiscatalog_api_key'));
-
-        if (CRON_KEY !== md5(API_KEY)) {
-            die('Error');
-        }
-    }
-
-    public function index()
-    {
-        try {
-            $dir_lock = $this->getOrCreateDir(DIR_STORAGE . 'process_lock');
-
-            $lock = fopen($dir_lock . '/start.lock', 'w');
-            if (!($lock && flock($lock, LOCK_EX | LOCK_NB))) {
-                throw new Exception('Already running oasis');
-            }
-
-            if ($this->cronUp) {
-                $this->cronUpStock();
-            } else {
-                $this->cronUpProduct();
-            }
-
-        } catch (Exception $e) {
-            echo $e->getMessage() . PHP_EOL;
-            exit();
-        }
-    }
-
-    /**
-     * Import / update products on schedule
-     */
-    public function cronUpProduct()
-    {
-        $this->load->model(self::ROUTE);
-
         $this->factor = (float)$this->config->get('oasiscatalog_factor');
         $this->increase = (float)$this->config->get('oasiscatalog_increase');
-        $this->dealer = $this->config->get('oasiscatalog_dealer');
-        $args = [
-            'fieldset' => 'full',
-        ];
-        $args += $this->config->get('oasiscatalog_args');
-        $data = [];
-        $limit = !empty($args['limit']) ? (int)$args['limit'] : 0;
-        $step = (int)$this->config->get('oasiscatalog_step');
-
-        if ($limit > 0) {
-            $args['limit'] = $limit;
-            $args['offset'] = $step * $limit;
-        } else {
-            unset($args['limit']);
-        }
-
-        if ($args['no_vat'] === '1') {
-            $data['tax_class_id'] = $this->config->get('oasiscatalog_tax_class_id');
-        } else {
-            $data['tax_class_id'] = 0;
-        }
-
-        $args['category'] = $this->config->get('oasiscatalog_category');
-
-        try {
-            set_time_limit(0);
-            ini_set('memory_limit', '2G');
-            $this->cat_oasis = $this->getCategoriesOasis(['fields' => 'id,parent_id,root,level,slug,name,path']);
-
-            if (!$args['category']) {
-                $ids = [];
-                foreach ($this->cat_oasis as $cat) {
-                    if ($cat->level === 1) {
-                        $ids[] = $cat->id;
-                    }
-                }
-                $args['category'] = implode(',', $ids);
-                unset($cat, $ids);
-            }
-
-            $this->products = $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);
-            $this->mf_oasis = $this->getBrandsOasis();
-            $stat = $this->getStatProducts();
-            $progressItem = (int)$this->config->get('oasiscatalog_progress_item');
-            $progressStepItem = 0;
-            $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_total', $stat->products);
-            $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_step_item', 0);
-
-            if ($limit > 0) {
-                $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_step_total', count($this->products));
-            }
-
-            if ($this->products) {
-                $nextStep = ++$step;
-                $totalProduct = count($this->products);
-                $i = 1;
-
-                foreach ($this->products as $product) {
-                    $this->logCounter = $totalProduct . '-' . $i;
-                    $this->product($product, $args, $data);
-                    $i++;
-
-                    $progressItem++;
-                    $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_item', $progressItem);
-
-                    if (!empty($limit)) {
-                        $progressStepItem++;
-                        $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_step_item', $progressStepItem);
-                    }
-                }
-                unset($totalProduct, $i);
-            } else {
-                $nextStep = 0;
-            }
-
-            if (!empty($limit)) {
-                $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_step', $nextStep);
-            } else {
-                $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_item', $stat->products);
-            }
-
-            $this->model_extension_module_oasiscatalog->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_date', date('Y-m-d H:i:s'));
-        } catch (\Exception $exception) {
-            die();
-        }
+        $this->dealer = (bool)$this->config->get('oasiscatalog_dealer');
     }
 
     /**
-     * update product quantities in stock on schedule
+     * @param array $cat_oasis
      */
-    public function cronUpStock()
+    public function dataThis(array $cat_oasis)
     {
-        $this->load->model(self::ROUTE);
-
-        try {
-            set_time_limit(0);
-            $stock = $this->curl_query(self::API_V4, 'stock', ['fields' => 'id,stock']);
-            $arrOasis = [];
-
-            foreach ($stock as $key => $item) {
-                $arrOasis[] = $item->id;
-                $oasisProduct = $this->model_extension_module_oasiscatalog->getOasisProduct($item->id);
-
-                if ($oasisProduct && (int)$oasisProduct['rating'] !== 5) {
-                    if ((int)$oasisProduct['option_value_id'] === 0) {
-                        $this->model_extension_module_oasiscatalog->upProductQuantity($oasisProduct['product_id'], $item->stock);
-                    } else {
-                        $this->model_extension_module_oasiscatalog->upProductOptionValue($oasisProduct['option_value_id'], $item->stock);
-                        $product_options = $this->model_extension_module_oasiscatalog->getProductOptionValues($oasisProduct['product_id']);
-
-                        if (array_search(1000000, array_column($product_options, 'quantity')) === false) {
-                            $this->model_extension_module_oasiscatalog->upProductQuantity($oasisProduct['product_id'], array_sum(array_column($product_options, 'quantity')));
-                        }
-                    }
-                }
-            }
-            unset($item, $oasisProduct, $product_options);
-
-            $oasisProducts = $this->model_extension_module_oasiscatalog->getOasisProducts();
-            $arrProduct = [];
-
-            foreach ($oasisProducts as $product) {
-                $arrProduct[] = $product['product_id_oasis'];
-            }
-            unset($product);
-
-            $array_diff = array_diff($arrProduct, $arrOasis);
-
-            if ($array_diff) {
-                foreach ($array_diff as $key => $value) {
-                    if ((int)$oasisProducts[$key]['option_value_id'] === 0) {
-                        $this->model_extension_module_oasiscatalog->disableProduct($oasisProducts[$key]['product_id']);
-                    } else {
-                        $this->model_extension_module_oasiscatalog->upProductOptionValue($oasisProducts[$key]['option_value_id'], 0);
-                        $product_options = $this->model_extension_module_oasiscatalog->getProductOptionValues($oasisProducts[$key]['product_id']);
-
-                        if (array_sum(array_column($product_options, 'quantity')) === 0) {
-                            $this->model_extension_module_oasiscatalog->disableProduct($oasisProducts[$key]['product_id']);
-                        }
-                    }
-                }
-                unset($key, $value);
-            }
-            $this->saveToLog('null', 'Stock updated');
-        } catch (\Exception $exception) {
-            die();
-        }
+        $this->cat_oasis = $cat_oasis;
     }
 
     /**
-     * @param       $product
-     * @param       $args
+     * @param string $string
+     */
+    public function logCounter(string $string)
+    {
+        $this->logCounter = $string;
+    }
+
+    /**
      * @param array $data
-     * @return int|null
-     * @throws Exception
-     */
-    public function product($product, $args, array $data = []): ?int
-    {
-        $this->load->model('catalog/product');
-
-        $result = null;
-
-        if (!is_null($product->parent_size_id)) {
-            $option = $this->getOption($this->var_size, $product->size, $product->total_stock);
-            $data['option'] = $option['option']['name'];
-            $data['product_option'] = $this->setOption($option);
-
-            if ($product->parent_size_id === $product->id) {
-                $result = $this->checkProduct($data, $product);
-            } else {
-                $args['ids'] = [
-                    'id' => $product->parent_size_id,
-                ];
-
-                $parent_product = [];
-                foreach ($this->products as $key => $item) {
-                    if ($item->id === $args['ids']['id']) {
-                        $parent_product = $this->products[$key];
-                        break;
-                    }
-                }
-
-                if (!$parent_product) {
-                    sleep(1);
-                    usleep(100000);
-                    $parent_product_oasis = $this->getProductOasis($args);
-                    $parent_product = $parent_product_oasis ? array_shift($parent_product_oasis) : false;
-                }
-
-                if (!empty($parent_product)) {
-                    $product_oc = $this->model_catalog_product->getProducts(['filter_model' => $parent_product->article]);
-
-                    if (!$product_oc) {
-                        $parent_id = $this->product($parent_product, $args, $data);
-                        $product_oc[] = $this->model_catalog_product->getProduct($parent_id);
-                    }
-
-                    $this->editProduct($product_oc[0], $product, $data['product_option']);
-                } else {
-                    $this->saveToLog($product->id, 'parent_id = ' . $args['ids']['id'] . ' | Error. Product ID not found!', 'oasisError');
-                }
-                unset($product_oc, $parent_product_oasis);
-            }
-        } else {
-            $this->checkProduct($data, $product);
-        }
-
-        return $result;
-    }
-
-    /**
-     * @param $data
-     * @param $product
+     * @param object $product
      * @return int
-     * @throws Exception
+     * @throws \Exception
      */
-    public function checkProduct($data, $product): int
+    public function checkProduct(array $data, object $product): int
     {
         $product_oc = $this->model_catalog_product->getProducts(['filter_model' => $product->article]);
 
         if (!$product_oc) {
             $product_id = $this->addProduct($data, $product);
-
             $this->saveToLog($product->id, 'add OCId=' . $product_id);
         } else {
             $this->editProduct($product_oc[0], $product, $data['product_option'] ?? []);
-            $product_id = $product_oc[0]['product_id'];
+            $product_id = intval($product_oc[0]['product_id']);
         }
 
         return $product_id;
     }
 
     /**
-     * @param       $product_info
-     * @param       $product_oasis
+     * @param array $product_info
+     * @param object $product_oasis
      * @param array $product_option
      * @return bool
-     * @throws Exception
+     * @throws \Exception
      */
-    public function editProduct($product_info, $product_oasis, array $product_option = []): bool
+    public function editProduct(array $product_info, object $product_oasis, array $product_option = []): bool
     {
         $this->load->model(self::ROUTE);
-        $date_modified = $this->model_extension_module_oasiscatalog->getOasisProductDateModified($product_oasis->id);
+        $date_modified = $this->model_extension_oasiscatalog_module_oasis->getOasisProductDateModified($product_oasis->id);
 
         $this->load->language(self::ROUTE);
         $this->load->model('catalog/product');
@@ -359,7 +96,7 @@ Errors: " . $errors . PHP_EOL;
         $this->load->model('catalog/option');
 
         $data = $product_info;
-        $data['product_option'] = $this->model_catalog_product->getProductOptions($product_info['product_id']);
+        $data['product_option'] = $this->model_catalog_product->getOptions(intval($product_info['product_id']));
 
         $option_value_id = 0;
         if ($product_option) {
@@ -404,14 +141,14 @@ Errors: " . $errors . PHP_EOL;
             }
         }
 
-        $manufacturer_info = $this->model_catalog_manufacturer->getManufacturer($product_info['manufacturer_id']);
+        $manufacturer_info = $this->model_catalog_manufacturer->getManufacturer(intval($product_info['manufacturer_id']));
 
         if ($manufacturer_info) {
             $data['manufacturer'] = $manufacturer_info['name'];
         }
 
-        $data['product_category'] = $this->getArrCategories($product_oasis->full_categories);
-        $images = $this->model_catalog_product->getProductImages($product_info['product_id']);
+        $data['product_category'] = $this->getProductCategories($product_oasis->full_categories);
+        $images = $this->model_catalog_product->getImages(intval($product_info['product_id']));
         $data['product_image'] = [];
 
         foreach ($images as $key => $value) {
@@ -422,9 +159,9 @@ Errors: " . $errors . PHP_EOL;
         }
         unset($key, $value);
 
-        $product_data = $this->model_extension_module_oasiscatalog->getOasisProduct($product_oasis->group_id);
+        $product_data = $this->model_extension_oasiscatalog_module_oasis->getOasisProduct($product_oasis->group_id);
         if ($product_data) {
-            $product_related = $this->model_catalog_product->getProductRelated($product_data['product_id']);
+            $product_related = $this->model_catalog_product->getRelated(intval($product_data['product_id']));
 
             if ($product_oasis->group_id !== $product_oasis->id && $product_info['product_id'] !== $product_data['product_id']) {
                 $product_related[] = $product_data['product_id'];
@@ -432,28 +169,24 @@ Errors: " . $errors . PHP_EOL;
             $data['product_related'] = $product_related;
         }
 
-        $arr_product = $this->setProduct($data, $product_oasis, $option_value_id);
-        $this->model_catalog_product->editProduct($product_info['product_id'], $arr_product);
+        $arr_product = $this->setProduct($data, $product_oasis, intval($option_value_id));
+        $this->model_catalog_product->editProduct(intval($product_info['product_id']), $arr_product);
 
         if ($product_option) {
-            $product_option_value = $this->model_extension_module_oasiscatalog->getProductOptionValueId($product_info['product_id'], $product_option[0]['product_option_value'][0]['option_value_id']);
+            $product_option_value = $this->model_extension_oasiscatalog_module_oasis->getProductOptionValueId(intval($product_info['product_id']), intval($product_option[0]['product_option_value'][0]['option_value_id']));
         }
 
+        $args = [
+            'rating'          => $product_oasis->rating,
+            'option_value_id' => $product_option_value['product_option_value_id'] ?? '',
+            'product_id'      => $product_info['product_id'],
+        ];
+
         if (empty($date_modified)) {
-            $args = [
-                'product_id_oasis' => $product_oasis->id,
-                'rating'           => $product_oasis->rating,
-                'option_value_id'  => $product_option_value['product_option_value_id'] ?? '',
-                'product_id'       => $product_info['product_id'],
-            ];
-            $this->model_extension_module_oasiscatalog->addOasisProduct($args);
+            $args['product_id_oasis'] = $product_oasis->id;
+            $this->model_extension_oasiscatalog_module_oasis->addOasisProduct($args);
         } else {
-            $args = [
-                'rating'          => $product_oasis->rating,
-                'option_value_id' => $product_option_value['product_option_value_id'] ?? '',
-                'product_id'      => $product_info['product_id'],
-            ];
-            $this->model_extension_module_oasiscatalog->editOasisProduct($product_oasis->id, $args);
+            $this->model_extension_oasiscatalog_module_oasis->editOasisProduct($product_oasis->id, $args);
         }
 
         $this->saveToLog($product_oasis->id, 'updated OCId=' . $product_info['product_id']);
@@ -462,16 +195,17 @@ Errors: " . $errors . PHP_EOL;
     }
 
     /**
-     * @param       $data
-     * @param       $product
+     * @param array $data
+     * @param object $product
      * @return integer
-     * @throws Exception
+     * @throws \Exception
      */
-    public function addProduct($data, $product): int
+    public function addProduct(array $data, object $product): int
     {
         $this->load->model('catalog/product');
+        $this->load->model(self::ROUTE);
 
-        $data['product_category'] = $this->getArrCategories($product->full_categories);
+        $data['product_category'] = $this->getProductCategories($product->full_categories);
 
         if (!is_null($product->brand_id)) {
             $data['manufacturer_id'] = $this->addBrand($product->brand_id);
@@ -499,13 +233,10 @@ Errors: " . $errors . PHP_EOL;
             $data['image'] = $data['product_image'][0]['image'];
         }
 
-        $arr_product = $this->setProduct($data, $product);
-        $product_id = $this->model_catalog_product->addProduct($arr_product);
-
-        $this->load->model(self::ROUTE);
+        $product_id = $this->model_catalog_product->addProduct($this->setProduct($data, $product));
 
         if (!empty($data['product_option'])) {
-            $product_option_value = $this->model_extension_module_oasiscatalog->getProductOptionValueId($product_id, $data['product_option'][0]['product_option_value'][0]['option_value_id']);
+            $product_option_value = $this->model_extension_oasiscatalog_module_oasis->getProductOptionValueId($product_id, $data['product_option'][0]['product_option_value'][0]['option_value_id']);
         }
 
         $args = [
@@ -514,19 +245,19 @@ Errors: " . $errors . PHP_EOL;
             'option_value_id'  => $product_option_value['product_option_value_id'] ?? '',
             'product_id'       => $product_id,
         ];
-        $this->model_extension_module_oasiscatalog->addOasisProduct($args);
+        $this->model_extension_oasiscatalog_module_oasis->addOasisProduct($args);
 
         return $product_id;
     }
 
     /**
-     * @param     $data
-     * @param     $product_o
+     * @param array $data
+     * @param object $product_o
      * @param int $option_value_id
      * @return array
-     * @throws Exception
+     * @throws \Exception
      */
-    public function setProduct($data, $product_o, int $option_value_id = 0): array
+    public function setProduct(array $data, object $product_o, int $option_value_id = 0): array
     {
         $this->load->model('catalog/product');
         $this->load->model('localisation/language');
@@ -548,11 +279,21 @@ Errors: " . $errors . PHP_EOL;
             }
             unset($language);
         } else {
-            $product['product_description'] = $this->model_catalog_product->getProductDescriptions($data['product_id']);
+            $product_description = $this->model_catalog_product->getProduct(intval($data['product_id']));
+            foreach ($languages as $language) {
+                $product['product_description'][$language['language_id']] = [
+                    'name'             => $product_description['name'] ?? '',
+                    'description'      => $product_description['description'] ?? '',
+                    'meta_title'       => $product_description['meta_title'] ?? '',
+                    'meta_description' => '',
+                    'meta_keyword'     => '',
+                    'tag'              => '',
+                ];
+            }
         }
 
+        $product['master_id'] = 0;
         $product['price'] = $this->getCalculationPrice($product_o);
-
         $product['model'] = $data['model'] ?? htmlspecialchars($product_o->article, ENT_QUOTES);
         $product['sku'] = $data['sku'] ?? '';
         $product['upc'] = $data['upc'] ?? '';
@@ -635,10 +376,10 @@ Errors: " . $errors . PHP_EOL;
     /**
      * Get calculation price product
      *
-     * @param $product
+     * @param object $product
      * @return float
      */
-    public function getCalculationPrice($product)
+    public function getCalculationPrice(object $product): float
     {
         $price = $this->dealer ? $product->discount_price : $product->price;
 
@@ -654,11 +395,11 @@ Errors: " . $errors . PHP_EOL;
     }
 
     /**
-     * @param $categories
+     * @param array $categories
      * @return array
-     * @throws Exception
+     * @throws \Exception
      */
-    public function getArrCategories($categories): array
+    public function getProductCategories(array $categories): array
     {
         $result = [];
         foreach ($categories as $category) {
@@ -676,45 +417,54 @@ Errors: " . $errors . PHP_EOL;
     }
 
     /**
-     * @param $id
-     * @return array|false
-     * @throws Exception
+     * @param int $id
+     * @return array
+     * @throws \Exception
      */
-    public function getCategories($id)
+    public function getCategories(int $id): array
     {
-        $category = $this->searchObject($this->cat_oasis, $id);
+        $category = self::searchObject($this->cat_oasis, $id);
 
         if (!$category) {
-            return false;
+            return [];
         }
 
         $this->load->model('catalog/category');
 
-        $category_id_oc = $this->getIdByKeyword($category->slug);
+        $category_id_oc = $this->getIdCategoryByOasisId(intval($category->id));
+
+        if (!empty($category_id_oc)) {
+            $exist_category_oc = $this->model_extension_oasiscatalog_module_oasis->getCategory($category_id_oc);
+            if (!$exist_category_oc) {
+                $this->model_extension_oasiscatalog_module_oasis->deleteOasisCategory($category_id_oc);
+                $category_id_oc = 0;
+            }
+            unset($exist_category_oc);
+        }
 
         if ($category_id_oc) {
-            $data = array_filter(array_column($this->model_catalog_category->getCategoryPath($category_id_oc), 'path_id'));
+            $data = array_filter(array_column($this->model_extension_oasiscatalog_module_oasis->getCategoryPath($category_id_oc), 'path_id'));
         } else {
-            $data = array_filter(array_column($this->model_catalog_category->getCategoryPath($this->addCategory($id)), 'path_id'));
+            $data = array_filter(array_column($this->model_extension_oasiscatalog_module_oasis->getCategoryPath($this->addCategory($id)), 'path_id'));
         }
 
         return $data;
     }
 
     /**
-     * @param $id
-     * @return mixed
-     * @throws Exception
+     * @param int $id
+     * @return int
+     * @throws \Exception
      */
-    public function addCategory($id)
+    public function addCategory(int $id): int
     {
-        $category = $this->searchObject($this->cat_oasis, $id);
+        $category = self::searchObject($this->cat_oasis, $id);
 
         if (!$category) {
-            return false;
+            return 0;
         }
 
-        $category_id_oc = $this->getIdByKeyword($category->slug);
+        $category_id_oc = $this->getIdCategoryByOasisId(intval($category->id));
 
         if ($category_id_oc) {
             return $category_id_oc;
@@ -740,7 +490,7 @@ Errors: " . $errors . PHP_EOL;
         $data['parent_id'] = 0;
 
         if (!is_null($category->parent_id)) {
-            $parent_category_id = $this->getIdByKeyword($this->searchObject($this->cat_oasis, $category->parent_id)->slug);
+            $parent_category_id = $this->getIdCategoryByOasisId(intval(self::searchObject($this->cat_oasis, $category->parent_id)->id));
 
             if ($parent_category_id) {
                 $data['parent_id'] = $parent_category_id;
@@ -760,21 +510,27 @@ Errors: " . $errors . PHP_EOL;
 
         $this->load->model('catalog/category');
 
-        return $this->model_catalog_category->addCategory($data);
+        $category_id = $this->model_catalog_category->addCategory($data);
+        $this->model_extension_oasiscatalog_module_oasis->addOasisCategory([
+            'oasis_id'    => $category->id,
+            'category_id' => $category_id,
+        ]);
+
+        return $category_id;
     }
 
     /**
-     * @param $attributes
+     * @param array $attributes
      * @return array
-     * @throws Exception
+     * @throws \Exception
      */
-    public function addAttributes($attributes): array
+    public function addAttributes(array $attributes): array
     {
         $this->load->model('catalog/attribute');
         $this->load->model('localisation/language');
 
         $languages = $this->model_localisation_language->getLanguages();
-        $data = [];
+        $result = [];
 
         foreach ($attributes as $attribute) {
             $name = $attribute->name;
@@ -789,29 +545,29 @@ Errors: " . $errors . PHP_EOL;
                 if ($neededAttribute) {
                     $attr = array_shift($neededAttribute);
 
-                    $key_attr = array_search($attr['name'], array_column($data, 'name'));
+                    $key_attr = array_search($attr['name'], array_column($result, 'name'));
 
                     if ($key_attr !== false) {
-                        foreach ($data[$key_attr]['product_attribute_description'] as $key => $value) {
-                            $data[$key_attr]['product_attribute_description'][$key]['text'] .= ', ' . $attribute->value;
+                        foreach ($result[$key_attr]['product_attribute_description'] as $key => $value) {
+                            $result[$key_attr]['product_attribute_description'][$key]['text'] .= ', ' . $attribute->value;
                         }
                         unset($key, $value);
                     } else {
-                        $data[] = [
+                        $result[] = [
                             'name'                          => $attr['name'],
                             'attribute_id'                  => $attr['attribute_id'],
-                            'product_attribute_description' => $this->toLanguagesArr($languages, 'text', $attribute->value),
+                            'product_attribute_description' => $this->toLanguagesArr($languages, 'text', (string)$attribute->value),
                         ];
                     }
                 } else {
-                    $data_attribute['attribute_description'] = $this->toLanguagesArr($languages, 'name', $attribute->name);
+                    $data_attribute['attribute_description'] = $this->toLanguagesArr($languages, 'name', (string)$attribute->name);
                     $data_attribute['attribute_group_id'] = $this->getAttributeGroupId($languages);
                     $data_attribute['sort_order'] = '';
 
-                    $data[] = [
+                    $result[] = [
                         'name'                          => $attribute->name,
                         'attribute_id'                  => $this->model_catalog_attribute->addAttribute($data_attribute),
-                        'product_attribute_description' => $this->toLanguagesArr($languages, 'text', $attribute->value),
+                        'product_attribute_description' => $this->toLanguagesArr($languages, 'text', (string)$attribute->value),
                     ];
                 }
                 unset($attr, $key_attr, $data_attribute);
@@ -819,26 +575,26 @@ Errors: " . $errors . PHP_EOL;
         }
         unset($attribute);
 
-        return $data;
+        return $result;
     }
 
     /**
-     * @param $id
-     * @return bool
-     * @throws Exception
+     * @param string $id
+     * @return int
+     * @throws \Exception
      */
-    public function addBrand($id)
+    public function addBrand(string $id): int
     {
-        $brand = $this->searchObject($this->mf_oasis, $id);
+        $brand = self::searchObject(Api::getBrandsOasis(), $id);
 
         if (!$brand) {
-            return false;
+            return 0;
         }
 
-        $brand_oc = $this->getIdByKeyword($brand->slug);
+        $manufacture_id_oc = $this->getManufacturerIdByKeyword($brand->slug);
 
-        if ($brand_oc) {
-            return $brand_oc;
+        if ($manufacture_id_oc) {
+            return $manufacture_id_oc;
         }
 
         $data['name'] = $brand->name;
@@ -861,24 +617,23 @@ Errors: " . $errors . PHP_EOL;
     }
 
     /**
-     * @param $option
-     * @return mixed
-     * @throws Exception
+     * @param array $option
+     * @return int
      */
-    public function addOption($option)
+    public function addOption(array $option): int
     {
         $this->load->model('catalog/option');
         $this->load->model('localisation/language');
 
         $languages = $this->model_localisation_language->getLanguages();
-        $data['option_description'] = $this->toLanguagesArr($languages, 'name', $option['name']);
+        $data['option_description'] = $this->toLanguagesArr($languages, 'name', (string)$option['name']);
         $data['type'] = 'radio';
         $data['sort_order'] = '';
 
         foreach ($option['value'] as $item) {
             $data['option_value'][] = [
                 'option_value_id'          => '',
-                'option_value_description' => $this->toLanguagesArr($languages, 'name', $item),
+                'option_value_description' => $this->toLanguagesArr($languages, 'name', (string)$item),
                 'image'                    => '',
                 'sort_order'               => '',
             ];
@@ -889,19 +644,18 @@ Errors: " . $errors . PHP_EOL;
     }
 
     /**
-     * @param $option_id
-     * @param $value
-     * @throws Exception
+     * @param int $option_id
+     * @param string $value
      */
-    public function editOption($option_id, $value)
+    public function editOption(int $option_id, string $value)
     {
         $this->load->model('catalog/option');
         $this->load->model('localisation/language');
 
-        $data['option_description'] = $this->model_catalog_option->getOptionDescriptions($option_id);
+        $data['option_description'] = $this->model_catalog_option->getDescriptions($option_id);
         $data['type'] = 'radio';
         $data['sort_order'] = '';
-        $option_values = $this->model_catalog_option->getOptionValueDescriptions($option_id);
+        $option_values = $this->model_catalog_option->getValueDescriptions($option_id);
         $languages = $this->model_localisation_language->getLanguages();
 
         $option_values[] = [
@@ -916,10 +670,10 @@ Errors: " . $errors . PHP_EOL;
     }
 
     /**
-     * @param $data
+     * @param array $data
      * @return array
      */
-    public function setOption($data): array
+    public function setOption(array $data): array
     {
         $option[0] = [
             'product_option_id' => '',
@@ -951,13 +705,13 @@ Errors: " . $errors . PHP_EOL;
     }
 
     /**
-     * @param $option_name
-     * @param $value
-     * @param $quantity
+     * @param string $option_name
+     * @param string $value
+     * @param int $quantity
      * @return array
-     * @throws Exception
+     * @throws \Exception
      */
-    public function getOption($option_name, $value, $quantity): array
+    public function getOption(string $option_name, string $value, int $quantity): array
     {
         $this->load->model('catalog/option');
 
@@ -972,12 +726,12 @@ Errors: " . $errors . PHP_EOL;
         }
         unset($opt);
 
-        $values = $this->getOptionValue($data['option']['option_id'], $value);
+        $values = $this->getOptionValue(intval($data['option']['option_id']), $value);
 
-        if ($values === false) {
-            $this->editOption($data['option']['option_id'], $value);
+        if (!$values) {
+            $this->editOption(intval($data['option']['option_id']), $value);
 
-            $values = $this->getOptionValue($data['option']['option_id'], $value);
+            $values = $this->getOptionValue(intval($data['option']['option_id']), $value);
         }
 
         $values['quantity'] = $quantity;
@@ -987,41 +741,25 @@ Errors: " . $errors . PHP_EOL;
     }
 
     /**
-     * @param $option_id
-     * @param $needle
-     * @return array|bool
-     * @throws Exception
+     * @param int $option_id
+     * @param string $needle
+     * @return array
      */
-    public function getOptionValue($option_id, $needle)
+    public function getOptionValue(int $option_id, string $needle): array
     {
         $this->load->model('catalog/option');
 
-        $option_values = $this->model_catalog_option->getOptionValues($option_id);
+        $option_values = $this->model_catalog_option->getValues($option_id);
         $key = array_search($needle, array_column($option_values, 'name'));
 
-        return $key !== false ? $option_values[$key] : false;
+        return $key !== false ? $option_values[$key] : [];
     }
 
     /**
-     * @param $args
-     * @return bool|array
+     * @param array $languages
+     * @return int
      */
-    public function getProductOasis($args)
-    {
-        if (isset($args['ids']) && $args['ids'] !== '') {
-            $args['ids'] = $args['ids']['id'];
-            unset($args['limit'], $args['offset']);
-        }
-
-        return $this->curl_query(self::API_V4, self::API_PRODUCTS, $args);
-    }
-
-    /**
-     * @param $languages
-     * @return mixed
-     * @throws Exception
-     */
-    public function getAttributeGroupId($languages)
+    public function getAttributeGroupId(array $languages): int
     {
         $this->load->model('catalog/attribute_group');
 
@@ -1030,7 +768,7 @@ Errors: " . $errors . PHP_EOL;
         $key = array_search($name, array_column($attribute_groups, 'name'));
 
         if ($key !== false) {
-            $attribute_group_id = $attribute_groups[$key]['attribute_group_id'];
+            $attribute_group_id = intval($attribute_groups[$key]['attribute_group_id']);
         } else {
             $data_attribute_group = [];
 
@@ -1049,12 +787,11 @@ Errors: " . $errors . PHP_EOL;
     }
 
     /**
-     * @param $stores
-     * @param $slug
+     * @param array $stores
+     * @param string $slug
      * @return array
-     * @throws Exception
      */
-    public function getSeoUrl($stores, $slug): array
+    public function getSeoUrl(array $stores, string $slug): array
     {
         $this->load->model('localisation/language');
 
@@ -1101,60 +838,27 @@ Errors: " . $errors . PHP_EOL;
         return $data;
     }
 
-    /**
-     * @param $seo_url
-     * @return integer|bool
-     * @throws Exception
-     */
-    public function getIdByKeyword($seo_url)
+    public function getIdCategoryByOasisId(int $id): int
     {
-        $this->load->model('design/seo_url');
+        $result = $this->model_extension_oasiscatalog_module_oasis->getIdOcCategory($id);
 
-        $seo_urls = $this->model_design_seo_url->getSeoUrlsByKeyword($seo_url);
-
-        if ($seo_urls) {
-            $result = explode('=', $seo_urls[0]['query']);
-
-            return $result[1];
-        }
-
-        return false;
+        return $result ? intval($result['category_id']) : 0;
     }
 
     /**
-     * Get oasis stat
-     *
-     * @return bool|mixed
+     * @param string $keyword
+     * @return integer
      */
-    public function getStatProducts()
+    public function getManufacturerIdByKeyword(string $keyword): int
     {
-        $data_args = $this->config->get('oasiscatalog_args');
-        $data = [
-            'not_on_order' => $data_args['not_on_order'] ?? '',
-            'price_from'   => $data_args['price_from'] ?? '',
-            'price_to'     => $data_args['price_to'] ?? '',
-            'rating'       => $data_args['rating'] ?? '0,1,2,3,4,5',
-            'moscow'       => $data_args['moscow'] ?? '',
-            'europe'       => $data_args['europe'] ?? '',
-            'remote'       => $data_args['remote'] ?? '',
-        ];
+        $this->load->model('design/seo_url');
 
-        $category = $this->config->get('oasiscatalog_category');
+        $result = $this->model_extension_oasiscatalog_module_oasis->getSeoUrls([
+            'keyword' => $keyword,
+            'key'     => 'manufacturer_id',
+        ]);
 
-        if (empty($category)) {
-            $data['category'] = implode(',', array_keys($this->getOasisMainCategories()));
-            sleep(1);
-        } else {
-            $data['category'] = $category;
-        }
-
-        foreach ($data as $key => $value) {
-            if ($value) {
-                $args[$key] = $value;
-            }
-        }
-
-        return $this->curl_query(self::API_V4, 'stat', $args);
+        return $result ? intval($result['value']) : 0;
     }
 
     /**
@@ -1163,12 +867,12 @@ Errors: " . $errors . PHP_EOL;
      * @param null $categories
      * @return array
      */
-    public function getOasisMainCategories($categories = null): array
+    public static function getOasisMainCategories($categories = null): array
     {
         $result = [];
 
         if (!$categories) {
-            $categories = $this->getCategoriesOasis();
+            $categories = Api::getCategoriesOasis();
         }
 
         foreach ($categories as $category) {
@@ -1181,38 +885,11 @@ Errors: " . $errors . PHP_EOL;
     }
 
     /**
-     * @param array $args
-     * @return bool|mixed
-     */
-    public function getCategoriesOasis(array $args = [])
-    {
-        return $this->curl_query(self::API_V4, 'categories', $args);
-    }
-
-    /**
-     * @param array $args
-     * @return bool|mixed
-     */
-    public function getCurrenciesOasis(array $args = [])
-    {
-        return $this->curl_query(self::API_V4, 'currencies', $args);
-    }
-
-    /**
-     * @param array $args
-     * @return bool|mixed
-     */
-    public function getBrandsOasis(array $args = [])
-    {
-        return $this->curl_query(self::API_V3, 'brands', $args);
-    }
-
-    /**
-     * @param $data
+     * @param array $data
      * @param $id
-     * @return bool|mixed
+     * @return mixed
      */
-    public function searchObject($data, $id)
+    public static function searchObject(array $data, $id): mixed
     {
         $neededObject = array_filter($data, function ($e) use ($id) {
             return $e->id == $id;
@@ -1226,54 +903,30 @@ Errors: " . $errors . PHP_EOL;
     }
 
     /**
-     * @param $languages
-     * @param $key
-     * @param $value
+     * @param array $languages
+     * @param string $key
+     * @param string $value
      * @return array
      */
-    public function toLanguagesArr($languages, $key, $value): array
+    public function toLanguagesArr(array $languages, string $key, string $value): array
     {
-        $data = [];
+        $result = [];
 
         foreach ($languages as $language) {
-            $data[$language['language_id']] = [
+            $result[$language['language_id']] = [
                 $key => $value,
             ];
         }
         unset($language);
 
-        return $data;
-    }
-
-    /**
-     * @param       $version
-     * @param       $type
-     * @param array $args
-     * @return bool|mixed
-     */
-    public function curl_query($version, $type, array $args = [])
-    {
-        $args_pref = [
-            'key'    => API_KEY,
-            'format' => 'json',
-        ];
-        $args = array_merge($args_pref, $args);
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, 'https://api.oasiscatalog.com/' . $version . $type . '?' . http_build_query($args));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $result = json_decode(curl_exec($ch));
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        return $http_code === 200 ? $result : false;
+        return $result;
     }
 
     /**
      * @param $data
      * @return bool|string
      */
-    protected function saveImg($data)
+    protected function saveImg($data): bool|string
     {
         $ext = pathinfo($data['img_url']);
 
@@ -1311,9 +964,10 @@ Errors: " . $errors . PHP_EOL;
     }
 
     /**
-     * @param $path
+     * @param string $path
+     * @return string|void
      */
-    protected function getOrCreateDir($path)
+    public static function getOrCreateDir(string $path)
     {
         try {
             if (!file_exists($path)) {
@@ -1332,10 +986,10 @@ Errors: " . $errors . PHP_EOL;
     }
 
     /**
-     * @param $str
+     * @param string $str
      * @return string
      */
-    protected function transliter($str): string
+    protected function transliter(string $str): string
     {
         $arr_trans = [
             'А'  => 'A',
@@ -1438,7 +1092,7 @@ Errors: " . $errors . PHP_EOL;
      * @param $msg
      * @param string $fileName
      */
-    protected function saveToLog($id, $msg, string $fileName = 'oasisLog')
+    public function saveToLog($id, $msg, string $fileName = 'oasisLog')
     {
         if ($this->debug) {
             $str = !empty($this->logCounter) ? $this->logCounter . ' | ' : '';

@@ -1,13 +1,13 @@
 <?php
 /*
- * Oasiscatalog OC3 CLI - v1.0
- * Require OpenCart 3.x
+ * Oasiscatalog OC4 CLI - v1.0
+ * Require OpenCart 4.x
  */
 
 define('OPENCART_ADMIN_DIR', '');
-define('MIN_VERSION', '3.0.3.7');
+define('MIN_VERSION', '4.0.1');
 
-$root_dir = realpath(str_replace(['oasis_cli.php', 'cli'], ['', ''], dirname(__FILE__)));
+$root_dir = realpath(dirname(__FILE__) . '/../../..');
 
 // Admin directory
 $admin_dir = '';
@@ -48,7 +48,7 @@ if (!isset($matches[1])) {
 	$version = $matches[1];
 }
 
-$version = substr($version, 0, 7);
+$version = substr($version, 0, 5);
 
 if ((int)str_replace('.', '', $version) < (int)str_replace('.', '', MIN_VERSION)) {
 	die('Для работы скрипта необходима минимальная версия OpenCart ' . MIN_VERSION . ', текущая версия OpenCart ' . $version);
@@ -56,9 +56,9 @@ if ((int)str_replace('.', '', $version) < (int)str_replace('.', '', MIN_VERSION)
 
 // Startup
 $version = substr($version, 0, 5);
-if (file_exists($root_dir . '/cli/' . $version . '/oasis_cli_framework.php')) {
-	require_once($root_dir . '/cli/' . $version . '/oasis_cli_framework.php');
+if (file_exists(__DIR__ . '/' . $version . '/framework.php')) {
+	require_once(__DIR__ . '/' . $version . '/framework.php');
 } else {
-	die("ERROR: cli error startup oasis_cli_framework");
+	die("ERROR: cli error startup framework");
 }
 ?>

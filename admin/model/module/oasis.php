@@ -1,6 +1,10 @@
 <?php
 
-class ModelExtensionModuleOasiscatalog extends Model
+namespace Opencart\Admin\Model\Extension\Oasiscatalog\Module;
+
+use Opencart\System\Engine\Model;
+
+class Oasis extends Model
 {
 
     public function setOption($store_id, $code, $key, $value)
@@ -46,7 +50,7 @@ class ModelExtensionModuleOasiscatalog extends Model
         return $query->row;
     }
 
-    public function addOasisProduct($data)
+    public function addOasisProduct(array $data)
     {
         $this->db->query("
             INSERT INTO `" . DB_PREFIX . "oasis_product` (product_id_oasis, rating, option_date_modified, option_value_id, product_id) 
@@ -57,12 +61,12 @@ class ModelExtensionModuleOasiscatalog extends Model
         ");
     }
 
-    public function editOasisProduct($product_id_oasis, $data)
+    public function editOasisProduct(string $product_id_oasis, array $data)
     {
         $this->db->query("UPDATE " . DB_PREFIX . "oasis_product SET rating = '" . (int)$data['rating'] . "', option_date_modified = NOW(), option_value_id = '" . (int)$data['option_value_id'] . "', product_id = '" . (int)$data['product_id'] . "' WHERE product_id_oasis = '" . $this->db->escape($product_id_oasis) . "'");
     }
 
-    public function getOasisProduct($product_id_oasis)
+    public function getOasisProduct(string $product_id_oasis): array
     {
         $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "oasis_product WHERE product_id_oasis = '" . $this->db->escape($product_id_oasis) . "'");
 
@@ -114,9 +118,9 @@ class ModelExtensionModuleOasiscatalog extends Model
         return $query->rows;
     }
 
-    public function getProductOptionValueId($product_id, $option_value_id)
+    public function getProductOptionValueId(int $product_id, int $option_value_id)
     {
-        $query = $this->db->query("SELECT product_option_value_id FROM " . DB_PREFIX . "product_option_value WHERE product_id = '" . (int)$product_id . "' AND option_value_id = '" . (int)$option_value_id . "'");
+        $query = $this->db->query("SELECT product_option_value_id FROM " . DB_PREFIX . "product_option_value WHERE product_id = '" . $product_id . "' AND option_value_id = '" . $option_value_id . "'");
 
         return $query->row;
     }
@@ -126,47 +130,81 @@ class ModelExtensionModuleOasiscatalog extends Model
         $this->db->query("UPDATE " . DB_PREFIX . "product_option_value SET quantity = '" . (int)$quantity . "' WHERE product_option_value_id = '" . (int)$product_option_value_id . "'");
     }
 
-    public function install()
+    public function getCategory(int $category_id): array
     {
-        $sql = " SHOW TABLES LIKE '" . DB_PREFIX . "oasis%'";
-        $query = $this->db->query($sql);
-        if (count($query->rows) <= 1) {
-            $this->createTables();
-        }
+        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "category WHERE category_id = '" . $category_id . "'");
 
+        return $query->row;
     }
 
-    public function createTables()
+    public function getCategoryPath($category_id)
     {
-        $queries = [];
-        $queries[] = "
-            CREATE TABLE `" . DB_PREFIX . "oasis_order` (
-                `order_id` INT(11) NOT null,
-                `queue_id` INT(11) NOT null,
-                PRIMARY KEY(`order_id`)
-            )
-            COLLATE = 'utf8_general_ci'
-            ENGINE = MyISAM
-            ROW_FORMAT = FIXED
-		";
-        $queries[] = "
-            CREATE TABLE `" . DB_PREFIX . "oasis_product` (
-                `product_id_oasis` CHAR(12) NOT NULL COLLATE 'utf8_general_ci',
-                `rating` TINYINT(1) NOT NULL,
-                `option_date_modified` DATETIME NOT NULL,
-                `option_value_id` INT(11) NOT NULL DEFAULT '0',
-                `product_id` INT(11) NOT NULL,
-                PRIMARY KEY (`product_id_oasis`)
-            )
-            COLLATE = 'utf8_general_ci'
-            ENGINE = MyISAM
-            ROW_FORMAT = FIXED
-		";
+        $query = $this->db->query("SELECT category_id, path_id, level FROM " . DB_PREFIX . "category_path WHERE category_id = '" . (int)$category_id . "'");
 
-        foreach ($queries as $query) {
-            $this->db->query($query);
+        return $query->rows;
+    }
+
+    public function getSeoUrls(array $where): array
+    {
+        $sql = "SELECT * FROM `" . DB_PREFIX . "seo_url` WHERE `keyword` = '" . $this->db->escape($where['keyword']) . "'";
+
+        if (!empty($where['key'])) {
+            $sql .= " AND `key` = '" . $this->db->escape($where['key']) . "'";
         }
 
-        return true;
+        if (!empty($where['value'])) {
+            $sql .= " AND `value` = '" . $this->db->escape($where['value']) . "'";
+        }
+
+        $query = $this->db->query($sql);
+
+        return $query->row;
+    }
+
+    public function getIdOcCategory(int $id): array
+    {
+        $query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oasis_category` WHERE oasis_id = '" . $id . "'");
+
+        return $query->row;
+    }
+
+    public function addOasisCategory($data)
+    {
+        $this->db->query("
+            INSERT INTO `" . DB_PREFIX . "oasis_category` (oasis_id, category_id) 
+            SELECT * FROM (SELECT '" . (int)$data['oasis_id'] . "' oasis_id, '" . $this->db->escape($data['category_id']) . "' category_id) AS tmp
+            WHERE NOT EXISTS (
+                SELECT oasis_id FROM `" . DB_PREFIX . "oasis_category` WHERE oasis_id = '" . (int)$data['oasis_id'] . "'
+            ) LIMIT 1
+        ");
+    }
+
+    public function deleteOasisCategory(int $category_id): void
+    {
+        $this->db->query("DELETE FROM `" . DB_PREFIX . "oasis_category` WHERE `category_id` = '" . $category_id . "'");
+    }
+
+    public function install(): void
+    {
+        $this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "oasis_order` (
+		  `order_id` INT(11) NOT NULL,
+		  `queue_id` INT(11) NOT NULL,
+		  PRIMARY KEY(`order_id`)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "oasis_product` (
+		  `product_id_oasis` CHAR(12) NOT NULL,
+		  `rating` TINYINT(1) NOT NULL,
+		  `option_date_modified` DATETIME NOT NULL,
+		  `option_value_id` INT(11) NOT NULL DEFAULT '0',
+		  `product_id` INT(11) NOT NULL,
+		  PRIMARY KEY (`product_id_oasis`)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "oasis_category` (
+		  `oasis_id` CHAR(12) NOT NULL,
+		  `category_id` INT NOT NULL,
+		  PRIMARY KEY (`oasis_id`)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
     }
 }
