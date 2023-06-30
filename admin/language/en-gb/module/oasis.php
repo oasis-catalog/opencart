@@ -47,6 +47,7 @@ $_['text_progress_step'] = "Step %s out of %s in progress. Current step status";
 $_['text_progress_step_next'] = "Next step %s of %s.";
 $_['text_progress_date'] = "Last import completed: ";
 $_['text_version'] = "Module version ";
+$_['text_icon_copy'] = "Copy";
 
 // Entry
 $_['entry_status'] = 'Status';

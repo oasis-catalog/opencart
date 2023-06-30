@@ -1,110 +1,115 @@
-// Forms
-$(document).on('submit', 'form[data-oc-toggle=\'oa-ajax\']', function (e) {
+$(document).ready(function () {
+    $("#tree").Tree();
+});
 
-    e.preventDefault();
-
-    var element = this;
-
-    var form = e.target;
-
-    var action = $(form).attr('action');
-
-    if (e.originalEvent !== undefined && e.originalEvent.submitter !== undefined) {
-        var button = e.originalEvent.submitter;
+$('#input-no-vat').click(function () {
+    if ($(this).is(':checked')) {
+        $('#tax-class').show(100);
     } else {
-        var button = '';
+        $('#tax-class').hide(100);
     }
+});
 
-    var formaction = $(button).attr('formaction');
-
-    if (formaction !== undefined) {
-        action = formaction;
+$('#rating-group input:checkbox').click(function () {
+    if ($(this).is(':checked')) {
+        $('#rating-group input:checkbox').not(this).prop('checked', false);
     }
+});
 
-    var method = $(form).attr('method');
+// Cope task
+var texti = document.getElementById('input-cron-product');
+var btni = document.getElementById('copy-cron-product');
+var textu = document.getElementById('input-cron-stock');
+var btnu = document.getElementById('copy-cron-stock');
 
-    if (method === undefined) {
-        method = 'post';
-    }
+btni.onclick = function () {
+    texti.select();
+    document.execCommand("copy");
+}
+btnu.onclick = function () {
+    textu.select();
+    document.execCommand("copy");
+}
 
-    var enctype = $(element).attr('enctype');
+// Progress bar
+setTimeout(upAjaxProgressBar, 20000);
 
-    if (enctype === undefined) {
-        enctype = 'application/x-www-form-urlencoded';
-    }
+function upAjaxProgressBar() {
+    jQuery(function ($) {
+        $.ajax({
+            url: 'index.php?route=extension/oasiscatalog/module/oasis|get_data_progress_bar&user_token=' + user_token,
+            type: 'POST',
+            dataType: 'json',
+            success: function (response) {
+                if (response) {
+                    if ('step_item' in response) {
+                        document.getElementById('upAjaxStep').style.width = response.step_item + '%';
+                        $('#upAjaxStep').html(response.step_item + '%');
+                    }
 
-    console.log(e);
-    console.log('element ' + element);
-    console.log('action ' + action);
-    console.log('button ' + button);
-    console.log('formaction ' + formaction);
-    console.log('method ' + method);
-    console.log('enctype ' + enctype);
+                    if ('total_item' in response) {
+                        document.getElementById('upAjaxTotal').style.width = response.total_item + '%';
+                        $('#upAjaxTotal').html(response.total_item + '%');
+                    }
 
-    // https://github.com/opencart/opencart/issues/9690
-    if (typeof CKEDITOR != 'undefined') {
-        for (instance in CKEDITOR.instances) {
-            CKEDITOR.instances[instance].updateElement();
+                    if ('progress_icon' in response) {
+                        document.querySelector(".oasis-process-icon").innerHTML = response.progress_icon;
+                    }
+
+                    if ('progress_step_text' in response) {
+                        document.querySelector('.oasis-process-text').innerHTML = response.progress_step_text;
+                    }
+
+                    if ('status_progress' in response) {
+                        if (response.status_progress == true) {
+                            addAnimatedBar('progress-bar-striped progress-bar-animated');
+                            setTimeout(upAjaxProgressBar, 5000);
+                        } else {
+                            removeAnimatedBar('progress-bar-striped progress-bar-animated');
+                            setTimeout(upAjaxProgressBar, 60000);
+                        }
+                    }
+                } else {
+                    removeAnimatedBar('progress-bar-striped progress-bar-animated');
+                    setTimeout(upAjaxProgressBar, 600000);
+                }
+            }
+        });
+    });
+}
+
+function addAnimatedBar(classStr) {
+    let lassArr = classStr.split(' ');
+
+    lassArr.forEach(function (item, index, array) {
+        let upAjaxTotal = document.getElementById('upAjaxTotal');
+
+        if (upAjaxTotal && !upAjaxTotal.classList.contains(item)) {
+            upAjaxTotal.classList.add(item);
         }
-    }
 
-    $.ajax({
-        url: action.replaceAll('&amp;', '&'),
-        type: method,
-        data: $(form).serialize(),
-        dataType: 'json',
-        contentType: 'application/x-www-form-urlencoded',
-        beforeSend: function () {
-            $(button).prop('disabled', true).addClass('loading');
-        },
-        complete: function () {
-            $(button).prop('disabled', false).removeClass('loading');
-        },
-        success: function (json) {
-            console.log(json);
+        let upAjaxStep = document.getElementById('upAjaxStep');
 
-            $('.alert-dismissible').remove();
-            $(element).find('.is-invalid').removeClass('is-invalid');
-            $(element).find('.invalid-feedback').removeClass('d-block');
-
-            if (json['redirect']) {
-                location = json['redirect'];
-            }
-
-            if (typeof json['error'] == 'string') {
-                $('#alert').prepend('<div class="alert alert-danger alert-dismissible"><i class="fa-solid fa-circle-exclamation"></i> ' + json['error'] + ' <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>');
-            }
-
-            if (typeof json['error'] == 'object') {
-                if (json['error']['warning']) {
-                    $('#alert').prepend('<div class="alert alert-danger alert-dismissible"><i class="fa-solid fa-circle-exclamation"></i> ' + json['error']['warning'] + ' <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>');
-                }
-
-                for (key in json['error']) {
-                    $('#input-' + key.replaceAll('_', '-')).addClass('is-invalid').find('.form-control, .form-select, .form-check-input, .form-check-label').addClass('is-invalid');
-                    $('#error-' + key.replaceAll('_', '-')).html(json['error'][key]).addClass('d-block');
-                }
-            }
-
-            if (json['success']) {
-                $('#alert').prepend('<div class="alert alert-success alert-dismissible"><i class="fa-solid fa-circle-check"></i> ' + json['success'] + ' <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>');
-
-                // Refresh
-                var url = $(form).attr('data-oc-load');
-                var target = $(form).attr('data-oc-target');
-
-                if (url !== undefined && target !== undefined) {
-                    $(target).load(url);
-                }
-            }
-
-            // Replace any form values that correspond to form names.
-            for (key in json) {
-                $(element).find('[name=\'' + key + '\']').val(json[key]);
-            }
-        },
-        error: function (xhr, ajaxOptions, thrownError) {
-            console.log(thrownError + "\r\n" + xhr.statusText + "\r\n" + xhr.responseText);
+        if (upAjaxStep && !upAjaxStep.classList.contains(item)) {
+            upAjaxStep.classList.add(item);
         }
     });
-});
+}
+
+function removeAnimatedBar(classStr) {
+    let lassArr = classStr.split(' ');
+
+    lassArr.forEach(function (item, index, array) {
+        let upAjaxTotal = document.getElementById('upAjaxTotal');
+
+        if (upAjaxTotal && upAjaxTotal.classList.contains(item)) {
+            upAjaxTotal.classList.remove(item);
+        }
+
+        let upAjaxStep = document.getElementById('upAjaxStep');
+
+        if (upAjaxStep && upAjaxStep.classList.contains(item)) {
+            upAjaxStep.classList.remove(item);
+        }
+    });
+}

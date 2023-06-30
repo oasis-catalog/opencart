@@ -47,6 +47,7 @@ $_['text_progress_step'] = "Выполняется %s шаг из %s. Стату
 $_['text_progress_step_next'] = "Следующий шаг %s из %s.";
 $_['text_progress_date'] = "Последний импорт завершен: ";
 $_['text_version'] = "Версия модуля ";
+$_['text_icon_copy'] = "Копировать";
 
 // Entry
 $_['entry_status'] = 'Статус';

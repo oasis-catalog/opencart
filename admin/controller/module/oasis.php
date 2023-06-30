@@ -16,7 +16,7 @@ class Oasis extends Controller
 {
     private array $error = [];
     private const ROUTE = 'extension/oasiscatalog/module/oasis';
-    private const VERSION_MODULE = '4.0.1';
+    private const VERSION_MODULE = '4.0.2';
 
     /**
      * @throws \Exception
@@ -51,6 +51,8 @@ class Oasis extends Controller
         $this->load->language(self::ROUTE);
         $this->document->setTitle($this->language->get('heading_title'));
         $this->document->addScript('/extension/oasiscatalog/admin/view/javascript/jquery.tree.js');
+        $this->document->addScript('/extension/oasiscatalog/admin/view/javascript/common.js', 'footer');
+        $data['footer_scripts'] = $this->document->getScripts('footer');
         $this->document->addStyle('/extension/oasiscatalog/admin/view/stylesheet/stylesheet.css');
 
         if (isset($this->error['warning'])) {
