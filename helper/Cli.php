@@ -150,9 +150,9 @@ class Cli extends Controller
 
             $this->model_extension_oasiscatalog_module_oasis->deleteOption(0, 'oasiscatalog', 'progress_tmp');
             $this->model_extension_oasiscatalog_module_oasis->setOption(0, 'oasiscatalog', 'progress', [
-                'item' => $tmpBar['item'],
-                'total' => $stat->products,
-                'step_item' => 0,
+                'item'       => $tmpBar['item'],
+                'total'      => $stat->products,
+                'step_item'  => 0,
                 'step_total' => 0,
             ]);
             $this->model_extension_oasiscatalog_module_oasis->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_date', date('Y-m-d H:i:s'));

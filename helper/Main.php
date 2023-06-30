@@ -1094,15 +1094,16 @@ class Main extends Controller
      *
      * @return bool|void
      */
-    public static function checkLockProcess() {
+    public static function checkLockProcess()
+    {
         try {
-            $lock = fopen( self::getFileNameLock(), 'w' );
-            if ( ! ( $lock && flock( $lock, LOCK_EX | LOCK_NB ) ) ) {
+            $lock = fopen(self::getFileNameLock(), 'w');
+            if (!($lock && flock($lock, LOCK_EX | LOCK_NB))) {
                 return true;
             }
 
             return false;
-        } catch ( Exception $e ) {
+        } catch (Exception $e) {
             echo $e->getMessage() . PHP_EOL;
             exit();
         }
@@ -1112,12 +1113,13 @@ class Main extends Controller
      * Get filename to lock
      * @return string|void
      */
-    public static function getFileNameLock() {
+    public static function getFileNameLock()
+    {
         try {
             $dir_lock = self::getOrCreateDir(DIR_STORAGE . 'process_lock');
 
             return $dir_lock . '/start.lock';
-        } catch ( Exception $e ) {
+        } catch (Exception $e) {
             echo $e->getMessage() . PHP_EOL;
             exit();
         }

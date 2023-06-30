@@ -10,13 +10,12 @@ use Exception;
 use Opencart\Admin\Controller\Extension\Oasis\Api;
 use Opencart\Admin\Controller\Extension\Oasis\Main;
 use Opencart\System\Engine\Controller;
-use Opencart\System\Helper as Helper;
 
 class Oasis extends Controller
 {
     private array $error = [];
     private const ROUTE = 'extension/oasiscatalog/module/oasis';
-    private const VERSION_MODULE = '4.0.2';
+    private const VERSION_MODULE = '4.0.3';
 
     /**
      * @throws \Exception
@@ -175,7 +174,7 @@ class Oasis extends Controller
             $json['error']['warning'] = $this->language->get('error_permission');
         }
 
-        if (Helper\Utf8\strlen($this->request->post['oasiscatalog_api_key']) < 10) {
+        if (mb_strlen($this->request->post['oasiscatalog_api_key']) < 10) {
             $json['error']['api_key'] = $this->language->get('error_api_key');
         }
 

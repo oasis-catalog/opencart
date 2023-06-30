@@ -16,23 +16,18 @@ $('#rating-group input:checkbox').click(function () {
     }
 });
 
-// Cope task
-var texti = document.getElementById('input-cron-product');
-var btni = document.getElementById('copy-cron-product');
-var textu = document.getElementById('input-cron-stock');
-var btnu = document.getElementById('copy-cron-stock');
-
-btni.onclick = function () {
-    texti.select();
+// Copy task
+document.getElementById('copy-cron-product').onclick = function () {
+    document.getElementById('input-cron-product').select();
     document.execCommand("copy");
 }
-btnu.onclick = function () {
-    textu.select();
+document.getElementById('copy-cron-stock').onclick = function () {
+    document.getElementById('input-cron-stock').select();
     document.execCommand("copy");
 }
 
 // Progress bar
-setTimeout(upAjaxProgressBar, 20000);
+setTimeout(upAjaxProgressBar, 10000);
 
 function upAjaxProgressBar() {
     jQuery(function ($) {
@@ -62,15 +57,15 @@ function upAjaxProgressBar() {
 
                     if ('status_progress' in response) {
                         if (response.status_progress == true) {
-                            addAnimatedBar('progress-bar-striped progress-bar-animated');
+                            switchAnimatedBar('progress-bar-striped progress-bar-animated', 'add');
                             setTimeout(upAjaxProgressBar, 5000);
                         } else {
-                            removeAnimatedBar('progress-bar-striped progress-bar-animated');
+                            switchAnimatedBar('progress-bar-striped progress-bar-animated', 'remove');
                             setTimeout(upAjaxProgressBar, 60000);
                         }
                     }
                 } else {
-                    removeAnimatedBar('progress-bar-striped progress-bar-animated');
+                    switchAnimatedBar('progress-bar-striped progress-bar-animated', 'remove');
                     setTimeout(upAjaxProgressBar, 600000);
                 }
             }
@@ -78,38 +73,28 @@ function upAjaxProgressBar() {
     });
 }
 
-function addAnimatedBar(classStr) {
+function switchAnimatedBar(classStr, method) {
     let lassArr = classStr.split(' ');
 
     lassArr.forEach(function (item, index, array) {
         let upAjaxTotal = document.getElementById('upAjaxTotal');
 
-        if (upAjaxTotal && !upAjaxTotal.classList.contains(item)) {
-            upAjaxTotal.classList.add(item);
+        if (upAjaxTotal) {
+            if (upAjaxTotal.classList.contains(item) && method === 'remove') {
+                upAjaxTotal.classList.remove(item);
+            } else if (method === 'add') {
+                upAjaxTotal.classList.add(item);
+            }
         }
 
         let upAjaxStep = document.getElementById('upAjaxStep');
 
-        if (upAjaxStep && !upAjaxStep.classList.contains(item)) {
-            upAjaxStep.classList.add(item);
-        }
-    });
-}
-
-function removeAnimatedBar(classStr) {
-    let lassArr = classStr.split(' ');
-
-    lassArr.forEach(function (item, index, array) {
-        let upAjaxTotal = document.getElementById('upAjaxTotal');
-
-        if (upAjaxTotal && upAjaxTotal.classList.contains(item)) {
-            upAjaxTotal.classList.remove(item);
-        }
-
-        let upAjaxStep = document.getElementById('upAjaxStep');
-
-        if (upAjaxStep && upAjaxStep.classList.contains(item)) {
-            upAjaxStep.classList.remove(item);
+        if (upAjaxStep) {
+            if (upAjaxStep.classList.contains(item) && method === 'remove') {
+                upAjaxStep.classList.remove(item);
+            } else if (method === 'add') {
+                upAjaxStep.classList.add(item);
+            }
         }
     });
 }
