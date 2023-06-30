@@ -43,7 +43,8 @@ $_['text_factor'] = 'Price factor';
 $_['text_increase'] = 'Price surcharge';
 $_['text_dealer'] = 'Use dealer prices';
 $_['text_progress_total'] = "Total processing status";
-$_['text_progress_step'] = "Step %d out of %d in progress. Current step status";
+$_['text_progress_step'] = "Step %s out of %s in progress. Current step status";
+$_['text_progress_step_next'] = "Next step %s of %s.";
 $_['text_progress_date'] = "Last import completed: ";
 $_['text_version'] = "Module version ";
 

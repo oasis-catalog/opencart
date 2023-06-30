@@ -41,16 +41,18 @@ class Main extends Controller
 
     /**
      * @param array $cat_oasis
+     * @return void
      */
-    public function dataThis(array $cat_oasis)
+    public function dataThis(array $cat_oasis): void
     {
         $this->cat_oasis = $cat_oasis;
     }
 
     /**
      * @param string $string
+     * @return void
      */
-    public function logCounter(string $string)
+    public function logCounter(string $string): void
     {
         $this->logCounter = $string;
     }
@@ -130,7 +132,7 @@ class Main extends Controller
                     }
                 }
 
-                $key_option = array_search($product_option[0]['product_option_value'][0]['option_value_id'], array_column($data['product_option'][0]['product_option_value'], 'option_value_id'));
+                $key_option = in_array($product_option[0]['product_option_value'][0]['option_value_id'], array_column($data['product_option'][0]['product_option_value'], 'option_value_id'));
 
                 if ($key_option === false) {
                     $data['product_option'][0]['product_option_value'][] = $product_option[0]['product_option_value'][0];
@@ -406,8 +408,7 @@ class Main extends Controller
             $categories_oc = $this->getCategories($category);
 
             foreach ($categories_oc as $category_oc) {
-                $needed_cat = array_search($category_oc, $result);
-                if ($needed_cat === false) {
+                if (in_array($category_oc, $result) === false) {
                     $result[] = $category_oc;
                 }
             }
@@ -646,8 +647,9 @@ class Main extends Controller
     /**
      * @param int $option_id
      * @param string $value
+     * @return void
      */
-    public function editOption(int $option_id, string $value)
+    public function editOption(int $option_id, string $value): void
     {
         $this->load->model('catalog/option');
         $this->load->model('localisation/language');
@@ -936,7 +938,7 @@ class Main extends Controller
 
         $data['count'] === 0 ? $count = '' : $count = '-' . $data['count'];
 
-        if (empty($data['img_name']) || $data['img_name'] === '') {
+        if (empty($data['img_name'])) {
             $data['img_name'] = $ext['filename'];
         }
 
@@ -1088,11 +1090,46 @@ class Main extends Controller
     }
 
     /**
+     * Check lock php process
+     *
+     * @return bool|void
+     */
+    public static function checkLockProcess() {
+        try {
+            $lock = fopen( self::getFileNameLock(), 'w' );
+            if ( ! ( $lock && flock( $lock, LOCK_EX | LOCK_NB ) ) ) {
+                return true;
+            }
+
+            return false;
+        } catch ( Exception $e ) {
+            echo $e->getMessage() . PHP_EOL;
+            exit();
+        }
+    }
+
+    /**
+     * Get filename to lock
+     * @return string|void
+     */
+    public static function getFileNameLock() {
+        try {
+            $dir_lock = self::getOrCreateDir(DIR_STORAGE . 'process_lock');
+
+            return $dir_lock . '/start.lock';
+        } catch ( Exception $e ) {
+            echo $e->getMessage() . PHP_EOL;
+            exit();
+        }
+    }
+
+    /**
      * @param $id
      * @param $msg
      * @param string $fileName
+     * @return void
      */
-    public function saveToLog($id, $msg, string $fileName = 'oasisLog')
+    public function saveToLog($id, $msg, string $fileName = 'oasisLog'): void
     {
         if ($this->debug) {
             $str = !empty($this->logCounter) ? $this->logCounter . ' | ' : '';
@@ -1110,5 +1147,16 @@ class Main extends Controller
                 }
             }
         }
+    }
+
+    /**
+     * Debug
+     *
+     * @param $msg
+     * @return void
+     */
+    public static function d($msg): void
+    {
+        echo '<pre>' . print_r($msg, true) . '</pre>';
     }
 }

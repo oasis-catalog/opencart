@@ -12,7 +12,7 @@ class Oasis extends Model
         if (!empty($code) && !empty($key)) {
             if (is_array($value)) {
                 $serialized = 1;
-                $value = serialize($value);
+                $value = json_encode($value);
             } else {
                 $serialized = 0;
             }
@@ -27,6 +27,16 @@ class Oasis extends Model
             } else {
                 $this->db->query("INSERT INTO " . DB_PREFIX . "setting SET `store_id` = '" . (int)$store_id . "', `code` = '" . $this->db->escape($code) . "', `key` = '" . $this->db->escape($key) . "', `value` = '" . $this->db->escape($value) . "', `serialized` = '" . $serialized . "'");
             }
+        }
+    }
+
+    public function deleteOption($store_id, $code, $key)
+    {
+        if (!empty($code) && !empty($key)) {
+            $this->db->query("DELETE FROM " . DB_PREFIX . "setting 
+            WHERE `store_id` = '" . (int)$store_id . "' 
+                AND `code` = '" . $this->db->escape($code) . "'
+                AND `key` = '" . $this->db->escape($key) . "'");
         }
     }
 

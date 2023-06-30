@@ -62,6 +62,7 @@ class Cli extends Controller
     public function cronUpProduct()
     {
         $this->load->model(self::ROUTE);
+        $this->model_extension_oasiscatalog_module_oasis->deleteOption(0, 'oasiscatalog', 'progress_tmp');
 
         $args = [
             'fieldset' => 'full',
@@ -107,13 +108,15 @@ class Cli extends Controller
             $stat = Api::getStatProducts($this->config);
             $this->main->dataThis($this->cat_oasis);
 
-            $progressItem = (int)$this->config->get('oasiscatalog_progress_item');
-            $progressStepItem = 0;
-            $this->model_extension_oasiscatalog_module_oasis->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_total', $stat->products);
-            $this->model_extension_oasiscatalog_module_oasis->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_step_item', 0);
+            $progress_data = $this->config->get('progress');
+            $tmpBar = [
+                'item'  => intval($progress_data['item'] ?? 0),
+                'total' => $stat->products,
+            ];
 
             if ($limit > 0) {
-                $this->model_extension_oasiscatalog_module_oasis->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_step_total', count($this->products));
+                $tmpBar['step_item'] = 0;
+                $tmpBar['step_total'] = count($this->products);
             }
 
             if ($this->products) {
@@ -126,26 +129,32 @@ class Cli extends Controller
                     $this->product($product, $args, $data);
                     $i++;
 
-                    $progressItem++;
-                    $this->model_extension_oasiscatalog_module_oasis->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_item', $progressItem);
+                    $tmpBar['item']++;
 
                     if (!empty($limit)) {
-                        $progressStepItem++;
-                        $this->model_extension_oasiscatalog_module_oasis->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_step_item', $progressStepItem);
+                        $tmpBar['step_item']++;
                     }
+                    $this->model_extension_oasiscatalog_module_oasis->setOption(0, 'oasiscatalog', 'progress_tmp', $tmpBar);
                 }
                 unset($totalProduct, $i);
             } else {
                 $nextStep = 0;
-                $this->model_extension_oasiscatalog_module_oasis->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_item', 0);
+                $tmpBar['item'] = 0;
             }
 
             if (!empty($limit)) {
                 $this->model_extension_oasiscatalog_module_oasis->setOption(0, 'oasiscatalog', 'oasiscatalog_step', $nextStep);
             } else {
-                $this->model_extension_oasiscatalog_module_oasis->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_item', 0);
+                $tmpBar['item'] = 0;
             }
 
+            $this->model_extension_oasiscatalog_module_oasis->deleteOption(0, 'oasiscatalog', 'progress_tmp');
+            $this->model_extension_oasiscatalog_module_oasis->setOption(0, 'oasiscatalog', 'progress', [
+                'item' => $tmpBar['item'],
+                'total' => $stat->products,
+                'step_item' => 0,
+                'step_total' => 0,
+            ]);
             $this->model_extension_oasiscatalog_module_oasis->setOption(0, 'oasiscatalog', 'oasiscatalog_progress_date', date('Y-m-d H:i:s'));
         } catch (Exception $exception) {
             echo $exception->getMessage() . PHP_EOL;

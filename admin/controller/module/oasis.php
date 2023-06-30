@@ -4,9 +4,11 @@ namespace Opencart\Admin\Controller\Extension\Oasiscatalog\Module;
 
 require_once(realpath(dirname(__FILE__) . '/../../..') . '/helper/Cli.php');
 require_once(realpath(dirname(__FILE__) . '/../../..') . '/helper/Api.php');
+require_once(realpath(dirname(__FILE__) . '/../../..') . '/helper/Main.php');
 
 use Exception;
 use Opencart\Admin\Controller\Extension\Oasis\Api;
+use Opencart\Admin\Controller\Extension\Oasis\Main;
 use Opencart\System\Engine\Controller;
 use Opencart\System\Helper as Helper;
 
@@ -99,27 +101,34 @@ class Oasis extends Controller
                 $data['increase'] = $this->config->get('oasiscatalog_increase');
                 $data['dealer'] = $this->config->get('oasiscatalog_dealer');
 
-                $progressTotal = (int)$this->config->get('oasiscatalog_progress_total');
-                $progressItem = (int)$this->config->get('oasiscatalog_progress_item');
-                $progressStepTotal = (int)$this->config->get('oasiscatalog_progress_step_total');
-                $progressStepItem = (int)$this->config->get('oasiscatalog_progress_step_item');
+                $lockProcess = Main::checkLockProcess();
+                $progress = $this->config->get($lockProcess ? 'progress_tmp' : 'progress');
+                $data['progress_class'] = $lockProcess ? 'progress-bar progress-bar-striped progress-bar-animated' : 'progress-bar';
+
+                if ($lockProcess) {
+                    $dIcon = '<i class="fa fa-cog fa-spin fa-fw" style="color: #0c7a0a;"></i>';
+                } else {
+                    $dIcon = '<i class="fa fa-pause" aria-hidden="true" style="color: #e97906;"></i>';
+                }
+
+                $data['progress_total'] = $this->language->get('text_progress_total') . ' <span class="oasis-process-icon">' . $dIcon . '</span>';
                 $data['progressDate'] = $this->config->get('oasiscatalog_progress_date');
                 $data['limit'] = !empty($args['limit']) ? (int)$args['limit'] : 0;
 
                 if (!empty($data['limit'])) {
                     $step = (int)$this->config->get('oasiscatalog_step');
-                    $stepTotal = !empty($progressTotal) ? ceil($progressTotal / $data['limit']) : 0;
-                    $data['text_progress_step'] = sprintf($this->language->get('text_progress_step'), ++$step, $stepTotal);
+                    $stepTotal = !empty($progress['total']) ? ceil($progress['total'] / $data['limit']) : 0;
+                    $data['progress_step'] = sprintf($this->language->get($lockProcess ? 'text_progress_step' : 'text_progress_step_next'), ++$step, $stepTotal);
                 }
 
-                if (!empty($progressTotal) && !empty($progressItem)) {
-                    $data['percentTotal'] = round(($progressItem / $progressTotal) * 100);
+                if (!empty($progress['total']) && !empty($progress['item'])) {
+                    $data['percentTotal'] = round(($progress['item'] / $progress['total']) * 100, 2, PHP_ROUND_HALF_DOWN);
                 } else {
                     $data['percentTotal'] = 0;
                 }
 
-                if (!empty($progressStepTotal) && !empty($progressStepItem)) {
-                    $data['percentStep'] = round(($progressStepItem / $progressStepTotal) * 100);
+                if (!empty($progress['step_total']) && !empty($progress['step_item'])) {
+                    $data['percentStep'] = round(($progress['step_item'] / $progress['step_total']) * 100, 2, PHP_ROUND_HALF_DOWN);
                 } else {
                     $data['percentStep'] = 0;
                 }
@@ -341,5 +350,49 @@ class Oasis extends Controller
     public function uninstall(): void
     {
         $this->model_setting_setting->deleteSetting('oasiscatalog');
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function get_data_progress_bar(): void
+    {
+        $this->load->language(self::ROUTE);
+
+        $lockProcess = Main::checkLockProcess();
+        $pBar = $this->config->get($lockProcess ? 'progress_tmp' : 'progress');
+        $args = $this->config->get('oasiscatalog_args');
+        $limit = isset($args['limit']) ? intval($args['limit']) : null;
+        $stepTotal = !empty($pBar['total']) ? ceil(intval($pBar['total']) / intval($limit)) : 0;
+        $oasis_step = intval($this->config->get('oasiscatalog_step'));
+        $step = $oasis_step < $stepTotal ? ++$oasis_step : $oasis_step;
+
+        $result = [
+            'status_progress' => false,
+            'progress_icon'   => '<i class="fa fa-pause" aria-hidden="true" style="color: #e97906;"></i>',
+        ];
+
+        if ($limit) {
+            $result['progress_step_text'] = sprintf($this->language->get('text_progress_step_next'), strval($step), strval($stepTotal));
+            if (!$lockProcess) {
+                $result['step_item'] = 0;
+            }
+        }
+
+        if ($lockProcess && $pBar) {
+            $step_item = round(($pBar['step_item'] / $pBar['step_total']) * 100, 2, PHP_ROUND_HALF_DOWN);
+            $item = round(($pBar['item'] / $pBar['total']) * 100, 2, PHP_ROUND_HALF_DOWN);
+
+            $result['total_item'] = min($item, 100);
+            $result['status_progress'] = true;
+            $result['progress_icon'] = '<i class="fa fa-cog fa-spin fa-fw" style="color: #0c7a0a;"></i>';
+
+            if ($limit) {
+                $result['step_item'] = $step_item > 99.5 ? 100 : $step_item;
+                $result['progress_step_text'] = sprintf($this->language->get('text_progress_step'), strval($step), strval($stepTotal));;
+            }
+        }
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($result));
     }
 }
