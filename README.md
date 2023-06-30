@@ -1,6 +1,6 @@
 # Модуль Oasiscatalog для OpenCart
 
-Модуль импорта товаров из [oasiscatalog.com](https://www.oasiscatalog.com/) в cms OpenCart v.4.0.1
+Модуль импорта товаров из [oasiscatalog.com](https://www.oasiscatalog.com/) в cms OpenCart v.4.0.1 и v.4.0.2
 
 ## Как установить
 
