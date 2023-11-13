@@ -603,14 +603,18 @@ class Main extends Controller
         $data['sort_order'] = '';
         $data['manufacturer_seo_url'] = $this->getSeoUrl($data['manufacturer_store'], $brand->slug);
 
-        $data_img = [
-            'folder_name' => 'catalog/oasis/manufacturers',
-            'img_url'     => $brand->logotype,
-            'img_name'    => $brand->slug,
-            'count'       => 0,
-        ];
+        if (!empty($brand->logotype)){
+            $data_img = [
+                'folder_name' => 'catalog/oasis/manufacturers',
+                'img_url'     => $brand->logotype,
+                'img_name'    => $brand->slug,
+                'count'       => 0,
+            ];
 
-        $data['image'] = $this->saveImg($data_img);
+            $data['image'] = $this->saveImg($data_img);
+        } else {
+            $data['image'] = '';
+        }
 
         $this->load->model('catalog/manufacturer');
 
