@@ -264,6 +264,16 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div class="row mb-3">
+                                    <label for="input-up_photo" class="col-sm-6 col-form-label">{{ text_up_photo }}</label>
+                                    <div class="col-sm-6">
+                                        <div class="form-check form-switch form-switch-lg">
+                                            <input type="hidden" name="up_photo" value="0"/>
+                                            <input type="checkbox" name="up_photo" value="1" id="input-up_photo"
+                                                   class="form-check-input"{% if up_photo %} checked{% endif %}/>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-sm-6">
                                 <div class="row mb-3">

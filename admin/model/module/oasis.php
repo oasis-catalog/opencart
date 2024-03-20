@@ -7,6 +7,56 @@ use Opencart\System\Engine\Model;
 class Oasis extends Model
 {
 
+    public function getImage(array $where)
+    {
+        $sql = "SELECT * FROM `" . DB_PREFIX . "oasis_images` WHERE `name` = '" . $this->db->escape($where['name']) . "'";
+
+        if (!empty($where['path'])) {
+            $sql .= " AND `path` = '" . $this->db->escape($where['path']) . "'";
+        }
+
+        $query = $this->db->query($sql);
+
+        return $query->row;
+    }
+
+    public function getImages(array $names)
+    {
+        if (empty($names)) {
+            return [];
+        }
+
+        $sql = "SELECT * FROM `" . DB_PREFIX . "oasis_images` WHERE `name` = '" . $this->db->escape(array_shift($names)) . "'";
+
+        if (!empty($names)) {
+            foreach ($names as $name) {
+                $sql .= " OR `name` = '" . $this->db->escape($name) . "'";
+            }
+        }
+
+        $query = $this->db->query($sql);
+
+        return $query->rows;
+    }
+
+    public function addImage($data)
+    {
+        if (isset($data['name']) && isset($data['path']) && isset($data['date_added'])) {
+            $this->db->query("
+                INSERT INTO `" . DB_PREFIX . "oasis_images` (name, path, date_added) 
+                SELECT * FROM (SELECT '" . $this->db->escape($data['name']) . "', '" . $this->db->escape($data['path']) . "', '" . (int)$data['date_added'] . "') AS tmp
+                WHERE NOT EXISTS (
+                    SELECT name FROM `" . DB_PREFIX . "oasis_images` WHERE name = '" . $this->db->escape($data['name']) . "'
+                ) LIMIT 1
+            ");
+        }
+    }
+
+    public function deleteImage($name): void
+    {
+        $this->db->query("DELETE FROM `" . DB_PREFIX . "oasis_images` WHERE `name` = '" . $this->db->escape($name) . "'");
+    }
+
     public function setOption($store_id, $code, $key, $value)
     {
         if (!empty($code) && !empty($key)) {
@@ -216,5 +266,12 @@ class Oasis extends Model
 		  `category_id` INT NOT NULL,
 		  PRIMARY KEY (`oasis_id`)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+        $this->db->query("CREATE TABLE `" . DB_PREFIX . "oasis_images` (
+          `name` char(50) NOT NULL,
+          `path` char(255) NOT NULL,
+          `date_added` int unsigned NOT NULL,
+          PRIMARY KEY (`name`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
     }
 }

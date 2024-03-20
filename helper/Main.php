@@ -2,6 +2,7 @@
 
 namespace Opencart\Admin\Controller\Extension\Oasis;
 
+use JetBrains\PhpStorm\NoReturn;
 use Opencart\System\Engine\Controller;
 use Exception;
 
@@ -28,6 +29,7 @@ class Main extends Controller
     private float $factor;
     private float $increase;
     private bool $dealer;
+    private bool $upPhoto;
     private const ROUTE = 'extension/oasiscatalog/module/oasis';
 
     public function __construct($registry)
@@ -37,6 +39,7 @@ class Main extends Controller
         $this->factor = (float)$this->config->get('oasiscatalog_factor');
         $this->increase = (float)$this->config->get('oasiscatalog_increase');
         $this->dealer = (bool)$this->config->get('oasiscatalog_dealer');
+        $this->upPhoto = (bool)$this->config->get('oasiscatalog_up_photo');
     }
 
     /**
@@ -150,16 +153,26 @@ class Main extends Controller
         }
 
         $data['product_category'] = $this->getProductCategories($product_oasis->full_categories);
-        $images = $this->model_catalog_product->getImages(intval($product_info['product_id']));
-        $data['product_image'] = [];
+        $productImages = $this->model_catalog_product->getImages(intval($product_info['product_id']));
 
-        foreach ($images as $key => $value) {
-            $data['product_image'][$key] = [
-                'image'      => $value['image'],
-                'sort_order' => $value['sort_order'],
-            ];
+        if ($this->upPhoto && $this->checkImages($product_oasis->images, $productImages) === false) {
+            $this->deleteImgInProduct($productImages);
+            $data['product_image'] = $this->prepareImagesProduct($product_oasis->images, end($data['product_category']));
+
+            if (!empty($data['product_image'])) {
+                $data['image'] = $data['product_image'][0]['image'];
+            }
+        } else {
+            $data['product_image'] = [];
+
+            foreach ($productImages as $key => $value) {
+                $data['product_image'][$key] = [
+                    'image'      => $value['image'],
+                    'sort_order' => $value['sort_order'],
+                ];
+            }
+            unset($key, $value);
         }
-        unset($key, $value);
 
         $product_data = $this->model_extension_oasiscatalog_module_oasis->getOasisProduct($product_oasis->group_id);
         if ($product_data) {
@@ -213,25 +226,9 @@ class Main extends Controller
             $data['manufacturer_id'] = $this->addBrand($product->brand_id);
         }
 
-        if (is_array($product->images)) {
-            foreach ($product->images as $image) {
-                if (isset($image->superbig)) {
-                    $data_img = [
-                        'folder_name' => 'catalog/oasis/products/' . end($data['product_category']),
-                        'img_url'     => $image->superbig,
-                        'count'       => 0,
-                    ];
+        $data['product_image'] = $this->prepareImagesProduct($product->images, end($data['product_category']));
 
-                    $data['product_image'][] = [
-                        'image'      => $this->saveImg($data_img),
-                        'sort_order' => '',
-                    ];
-                }
-            }
-            unset($image);
-        }
-
-        if (isset($data['product_image'])) {
+        if (!empty($data['product_image'])) {
             $data['image'] = $data['product_image'][0]['image'];
         }
 
@@ -603,12 +600,10 @@ class Main extends Controller
         $data['sort_order'] = '';
         $data['manufacturer_seo_url'] = $this->getSeoUrl($data['manufacturer_store'], $brand->slug);
 
-        if (!empty($brand->logotype)){
+        if (!empty($brand->logotype)) {
             $data_img = [
-                'folder_name' => 'catalog/oasis/manufacturers',
-                'img_url'     => $brand->logotype,
-                'img_name'    => $brand->slug,
-                'count'       => 0,
+                'folder' => 'catalog/oasis/manufacturers',
+                'source' => $brand->logotype,
             ];
 
             $data['image'] = $this->saveImg($data_img);
@@ -929,44 +924,160 @@ class Main extends Controller
     }
 
     /**
-     * @param $data
-     * @return bool|string
+     * Delete images in product
+     *
+     * @param $images
+     * @return void
      */
-    protected function saveImg($data): bool|string
+    public function deleteImgInProduct($images): void
     {
-        $ext = pathinfo($data['img_url']);
+        foreach ($images as $image) {
+            $ext = pathinfo($image['image']);
+            $this->model_extension_oasiscatalog_module_oasis->deleteImage($ext['basename']);
+
+            if (file_exists(DIR_IMAGE . $image['image'])) {
+                unlink(DIR_IMAGE . $image['image']);
+            }
+        }
+    }
+
+    /**
+     * Checking product images for relevance
+     *
+     * Usage:
+     *
+     * Check is good - true
+     *
+     * Check is bad - false
+     *
+     * @param $images
+     * @param $dbProductImages
+     *
+     * @return bool
+     */
+    public function checkImages($images, $dbProductImages): bool
+    {
+        if (empty($dbProductImages)) {
+            return false;
+        }
+
+        if (count($images) !== count($dbProductImages)) {
+            return false;
+        }
+
+        $imgNames = [];
+
+        foreach ($dbProductImages as $dbProductImage) {
+            if (!file_exists(DIR_IMAGE . $dbProductImage['image'])) {
+                return false;
+            }
+
+            $extUrl = pathinfo($dbProductImage['image']);
+            $imgNames[] = $extUrl['basename'];
+        }
+
+        $dataDbOaImages = $this->model_extension_oasiscatalog_module_oasis->getImages($imgNames);
+
+        if (empty($dataDbOaImages)) {
+            return false;
+        }
+
+        foreach ($images as $image) {
+            if (empty($image->superbig)) {
+                return false;
+            }
+
+            $keyNeeded = array_search(basename($image->superbig), array_column($dataDbOaImages, 'name'));
+
+            if ($keyNeeded === false || $image->updated_at > intval($dataDbOaImages[$keyNeeded]['date_added'])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Prepare images for product
+     *
+     * @param $images
+     * @param string $subCatalog
+     * @return array
+     */
+    public function prepareImagesProduct($images, string $subCatalog = ''): array
+    {
+        $result = [];
+
+        if (is_array($images)) {
+            foreach ($images as $image) {
+                if (isset($image->superbig)) {
+                    $data_img = [
+                        'folder' => 'catalog/oasis/products/' . $subCatalog,
+                        'source' => $image->superbig,
+                    ];
+
+                    $result[] = [
+                        'image'      => $this->saveImg($data_img),
+                        'sort_order' => '',
+                    ];
+                }
+            }
+
+        }
+
+        return $result;
+    }
+
+    /**
+     * Save image
+     *
+     * @param $data
+     * @return string
+     */
+    protected function saveImg($data): string
+    {
+        $ext = pathinfo($data['source']);
 
         if (!array_key_exists('extension', $ext) || $ext['extension'] === 'tif') {
             return false;
         }
 
-        $data['count'] === 0 ? $count = '' : $count = '-' . $data['count'];
+        $imgDb = $this->model_extension_oasiscatalog_module_oasis->getImage(['name' => $ext['basename']]);
 
-        if (empty($data['img_name'])) {
-            $data['img_name'] = $ext['filename'];
-        }
+        if (empty($imgDb)) {
+            $img = $this->getOrCreateDir(DIR_IMAGE . $data['folder'] . '/') . $ext['basename'];
 
-        $img = $this->getOrCreateDir(DIR_IMAGE . $data['folder_name'] . '/') . $data['img_name'] . $count . '.' . $ext['extension'];
+            if (!file_exists($img)) {
+                $pic = file_get_contents($data['source'], true, stream_context_create([
+                    'http' => [
+                        'ignore_errors'   => true,
+                        'follow_location' => true
+                    ],
+                    'ssl'  => [
+                        'verify_peer'      => false,
+                        'verify_peer_name' => false,
+                    ],
+                ]));
 
-        if (!file_exists($img)) {
-            $pic = file_get_contents($data['img_url'], true, stream_context_create([
-                'http' => [
-                    'ignore_errors'   => true,
-                    'follow_location' => true
-                ],
-                'ssl'  => [
-                    'verify_peer'      => false,
-                    'verify_peer_name' => false,
-                ],
-            ]));
-
-            if (!preg_match("/200|301/", $http_response_header[0])) {
-                return false;
+                if (!preg_match("/200|301/", $http_response_header[0])) {
+                    return '';
+                }
+                file_put_contents($img, $pic);
             }
-            file_put_contents($img, $pic);
+
+            $this->model_extension_oasiscatalog_module_oasis->addImage(['name' => $ext['basename'], 'path' => $data['folder'], 'date_added' => time()]);
+            $result = $data['folder'] . '/' . $ext['basename'];
+
+        } else {
+            if (!file_exists($this->getOrCreateDir(DIR_IMAGE . $imgDb['path'] . '/') . $imgDb['name'])) {
+                $this->model_extension_oasiscatalog_module_oasis->deleteImage($imgDb['name']);
+                $result = $this->saveImg($data);
+            } else {
+                $result = $imgDb['path'] . '/' . $imgDb['name'];
+            }
         }
 
-        return $data['folder_name'] . '/' . $data['img_name'] . $count . '.' . $ext['extension'];
+        return $result;
     }
 
     /**
@@ -1153,6 +1264,40 @@ class Main extends Controller
                 }
             }
         }
+    }
+
+    /**
+     * Get ids product by group_id
+     *
+     * @param string $groupId
+     *
+     * @return void
+     */
+    #[NoReturn] public static function getIdsByGroupId(string $groupId): void
+    {
+        $oasisCategories = Api::getCategoriesOasis(['fields' => 'id']);
+        $ids = [];
+
+        foreach ($oasisCategories as $oasisCategory) {
+            $ids[] = $oasisCategory->id;
+        }
+
+        $args = [
+            'fields'   => 'id,group_id',
+            'category' => implode(',', $ids)
+        ];
+
+        $products = Api::getProductsOasis($args);
+        $result = [];
+
+        foreach ($products as $product) {
+            if ($product->group_id == $groupId) {
+                $result[] = $product->id;
+            }
+        }
+
+        print_r('$args[\'ids\'] = \'' . implode(',', $result) . '\';');
+        exit();
     }
 
     /**

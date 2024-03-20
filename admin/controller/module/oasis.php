@@ -101,6 +101,7 @@ class Oasis extends Controller
                 $data['factor'] = $this->config->get('oasiscatalog_factor');
                 $data['increase'] = $this->config->get('oasiscatalog_increase');
                 $data['dealer'] = $this->config->get('oasiscatalog_dealer');
+                $data['up_photo'] = $this->config->get('oasiscatalog_up_photo');
 
                 $lockProcess = Main::checkLockProcess();
                 $progress = $this->config->get($lockProcess ? 'progress_tmp' : 'progress');
@@ -249,6 +250,10 @@ class Oasis extends Controller
 
         if (isset($this->request->post['dealer']) && $this->request->post['dealer'] !== '') {
             $post_data['oasiscatalog_dealer'] = $this->request->post['dealer'];
+        }
+
+        if (isset($this->request->post['up_photo']) && $this->request->post['up_photo'] !== '') {
+            $post_data['oasiscatalog_up_photo'] = $this->request->post['up_photo'];
         }
 
         $post_data['oasiscatalog_progress_total'] = (int)$this->config->get('oasiscatalog_progress_total');
