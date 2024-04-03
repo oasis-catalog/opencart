@@ -15,7 +15,7 @@ class Oasis extends Controller
 {
     private array $error = [];
     private const ROUTE = 'extension/oasiscatalog/module/oasis';
-    private const VERSION_MODULE = '4.0.4';
+    private const VERSION_MODULE = '4.0.5';
 
     /**
      * @throws \Exception
