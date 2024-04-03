@@ -19,6 +19,8 @@ class Cli extends Controller
 {
     private Main $main;
     public array $cat_oasis = [];
+    public bool $delete_exclude = false;
+    public array $selected_category = [];
     private array $products = [];
     private const ROUTE = 'extension/oasiscatalog/module/oasis';
 
@@ -71,6 +73,7 @@ class Cli extends Controller
         $data = [];
         $limit = !empty($args['limit']) ? (int)$args['limit'] : 0;
         $step = (int)$this->config->get('oasiscatalog_step');
+        $this->delete_exclude = (bool)$this->config->get('oasiscatalog_delete_exclude');
 
         if ($limit > 0) {
             $args['limit'] = $limit;
@@ -104,9 +107,26 @@ class Cli extends Controller
                 unset($cat, $ids);
             }
 
+            $this->selected_category = explode(',', $args['category']);
             $this->products = Api::getProductsOasis($args);
             $stat = Api::getStatProducts($this->config);
             $this->main->dataThis($this->cat_oasis);
+
+            if ($this->delete_exclude) {
+                $all_oasis_products = $this->model_extension_oasiscatalog_module_oasis->getOasisProducts();
+
+                if (!empty($all_oasis_products)) {
+                    $dbOasisProductIds = array_unique(array_column($all_oasis_products, 'product_id_oasis'));
+                    $resProducts = API::getProductsOasisOnlyFieldCategories($dbOasisProductIds);
+
+                    foreach ($resProducts as $resProduct) {
+                        if (empty(array_intersect($resProduct->categories, $this->selected_category))) {
+                            $this->main->checkDeleteProduct(strval($resProduct->id));
+                        }
+                    }
+                }
+                unset($all_oasis_products, $dbOasisProductIds, $resProducts, $resProduct);
+            }
 
             $progress_data = $this->config->get('progress');
             $tmpBar = [

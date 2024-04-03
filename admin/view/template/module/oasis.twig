@@ -282,6 +282,16 @@
                                         {{ categories }}
                                     </div>
                                 </div>
+                                <div class="row mb-3">
+                                    <label for="input-delete_exclude" class="col-sm-6 col-form-label">{{ text_delete_exclude }}</label>
+                                    <div class="col-sm-6">
+                                        <div class="form-check form-switch form-switch-lg">
+                                            <input type="hidden" name="delete_exclude" value="0"/>
+                                            <input type="checkbox" name="delete_exclude" value="1" id="input-delete_exclude"
+                                                   class="form-check-input"{% if delete_exclude %} checked{% endif %}/>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     {% endif %}

@@ -11,6 +11,42 @@ class Api
     private const API_PRODUCTS = 'products';
 
     /**
+     * @param array $IDS
+     * @return array
+     */
+    public static function getProductsOasisOnlyFieldCategories(array $IDS = []): array
+    {
+        $result = [];
+        $args = [
+            'fields' => 'id,categories',
+            'strict' => true,
+        ];
+
+        $products = self::curl_query(self::API_V4, self::API_PRODUCTS, $args);
+
+        if (!empty($IDS)) {
+            if (!empty($products)) {
+                foreach ($products as $product) {
+                    if (in_array($product->id, $IDS)) {
+                        $result[] = (object)[
+                            'id'         => $product->id,
+                            'categories' => $product->categories,
+                        ];
+                    }
+                }
+            }
+        } else {
+            foreach ($products as $product) {
+                unset($product->included_branding, $product->full_categories);
+            }
+
+            $result = $products;
+        }
+
+        return $result;
+    }
+
+    /**
      * @param $args
      * @return array
      */

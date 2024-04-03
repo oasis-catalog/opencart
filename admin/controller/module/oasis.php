@@ -102,6 +102,7 @@ class Oasis extends Controller
                 $data['increase'] = $this->config->get('oasiscatalog_increase');
                 $data['dealer'] = $this->config->get('oasiscatalog_dealer');
                 $data['up_photo'] = $this->config->get('oasiscatalog_up_photo');
+                $data['delete_exclude'] = $this->config->get('oasiscatalog_delete_exclude');
 
                 $lockProcess = Main::checkLockProcess();
                 $progress = $this->config->get($lockProcess ? 'progress_tmp' : 'progress');
@@ -256,6 +257,10 @@ class Oasis extends Controller
             $post_data['oasiscatalog_up_photo'] = $this->request->post['up_photo'];
         }
 
+        if (isset($this->request->post['delete_exclude']) && $this->request->post['delete_exclude'] !== '') {
+            $post_data['oasiscatalog_delete_exclude'] = $this->request->post['delete_exclude'];
+        }
+
         $post_data['oasiscatalog_progress_total'] = (int)$this->config->get('oasiscatalog_progress_total');
         $post_data['oasiscatalog_progress_item'] = (int)$this->config->get('oasiscatalog_progress_item');
         $post_data['oasiscatalog_progress_date'] = $this->config->get('oasiscatalog_progress_date');
@@ -301,7 +306,7 @@ class Oasis extends Controller
 
             for ($i = 0; $i < count($data[$parent_id]); $i++) {
                 if (empty($checkeds)) {
-                    $checked = $data[$parent_id][$i]['level'] == 1 ? ' checked' : '';
+                    $checked = ' checked';
                 } else {
                     $checked = array_search($data[$parent_id][$i]['id'], $checkeds) !== false ? ' checked' : '';
                 }

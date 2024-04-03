@@ -82,6 +82,24 @@ class Main extends Controller
     }
 
     /**
+     * Check and delete product
+     *
+     * @param string $product_id_oasis
+     * @return void
+     */
+    public function checkDeleteProduct(string $product_id_oasis): void
+    {
+        $product = $this->model_extension_oasiscatalog_module_oasis->getOasisProduct($product_id_oasis);
+
+        if (!empty($product)) {
+            $this->deleteImgInProduct($this->model_catalog_product->getImages(intval($product['product_id'])));
+            $this->model_catalog_product->deleteProduct(intval($product['product_id']));
+            $this->db->query("DELETE FROM `" . DB_PREFIX . "oasis_product` WHERE product_id_oasis = '" . $this->db->escape($product_id_oasis) . "'");
+            $this->saveToLog($product_id_oasis, 'delete OCId=' . $product['product_id']);
+        }
+    }
+
+    /**
      * @param array $product_info
      * @param object $product_oasis
      * @param array $product_option
