@@ -269,7 +269,7 @@ Errors: " . $errors . PHP_EOL;
 
         $result = null;
 
-        if (!is_null($product->parent_size_id)) {
+        if (!empty($product->size) && !is_null($product->parent_size_id)) {
             $option = $this->getOption($this->var_size, $product->size, $product->total_stock);
             $data['option'] = $option['option']['name'];
             $data['product_option'] = $this->setOption($option);
