@@ -36,7 +36,7 @@ class Cli extends Controller
         $this->index();
     }
 
-    public function index()
+    public function index(): void
     {
         try {
             $dir_lock = Main::getOrCreateDir(DIR_STORAGE . 'process_lock');
@@ -45,6 +45,17 @@ class Cli extends Controller
             if (!($lock && flock($lock, LOCK_EX | LOCK_NB))) {
                 throw new Exception('Already running oasis');
             }
+
+            $this->load->model(self::ROUTE);
+            $this->load->model('catalog/attribute');
+            $this->load->model('catalog/attribute_group');
+            $this->load->model('catalog/category');
+            $this->load->model('catalog/option');
+            $this->load->model('catalog/product');
+            $this->load->model('catalog/manufacturer');
+            $this->load->model('localisation/language');
+            $this->load->model('setting/store');
+            $this->load->model('design/seo_url');
 
             if (CRON_UP) {
                 $this->cronUpStock();
@@ -61,9 +72,8 @@ class Cli extends Controller
     /**
      * Import / update products on schedule
      */
-    public function cronUpProduct()
+    public function cronUpProduct(): void
     {
-        $this->load->model(self::ROUTE);
         $this->model_extension_oasiscatalog_module_oasis->deleteOption(0, 'oasiscatalog', 'progress_tmp');
 
         $args = [
@@ -185,10 +195,8 @@ class Cli extends Controller
     /**
      * update product quantities in stock on schedule
      */
-    public function cronUpStock()
+    public function cronUpStock(): void
     {
-        $this->load->model(self::ROUTE);
-
         try {
             set_time_limit(0);
             $stock = Api::getStock();
@@ -250,12 +258,10 @@ class Cli extends Controller
      * @param array $args
      * @param array $data
      * @return int|null
-     * @throws \Exception
+     * @throws Exception
      */
     public function product(object $product, array $args, array $data = []): ?int
     {
-        $this->load->model('catalog/product');
-
         $result = null;
 
         if (!empty($product->size) && !is_null($product->parent_size_id)) {

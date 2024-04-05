@@ -64,7 +64,7 @@ class Main extends Controller
      * @param array $data
      * @param object $product
      * @return int
-     * @throws \Exception
+     * @throws Exception
      */
     public function checkProduct(array $data, object $product): int
     {
@@ -104,19 +104,13 @@ class Main extends Controller
      * @param object $product_oasis
      * @param array $product_option
      * @return bool
-     * @throws \Exception
+     * @throws Exception
      */
     public function editProduct(array $product_info, object $product_oasis, array $product_option = []): bool
     {
-        $this->load->model(self::ROUTE);
         $date_modified = $this->model_extension_oasiscatalog_module_oasis->getOasisProductDateModified($product_oasis->id);
 
         $this->load->language(self::ROUTE);
-        $this->load->model('catalog/product');
-        $this->load->model('catalog/manufacturer');
-        $this->load->model('catalog/category');
-        $this->load->model('catalog/attribute');
-        $this->load->model('catalog/option');
 
         $data = $product_info;
         $data['product_option'] = $this->model_catalog_product->getOptions(intval($product_info['product_id']));
@@ -231,13 +225,10 @@ class Main extends Controller
      * @param array $data
      * @param object $product
      * @return integer
-     * @throws \Exception
+     * @throws Exception
      */
     public function addProduct(array $data, object $product): int
     {
-        $this->load->model('catalog/product');
-        $this->load->model(self::ROUTE);
-
         $data['product_category'] = $this->getProductCategories($product->full_categories);
 
         if (!is_null($product->brand_id)) {
@@ -272,13 +263,10 @@ class Main extends Controller
      * @param object $product_o
      * @param int $option_value_id
      * @return array
-     * @throws \Exception
+     * @throws Exception
      */
     public function setProduct(array $data, object $product_o, int $option_value_id = 0): array
     {
-        $this->load->model('catalog/product');
-        $this->load->model('localisation/language');
-
         $languages = $this->model_localisation_language->getLanguages();
 
         if (empty($data['model']) || $data['model'] === $product_o->article) {
@@ -414,7 +402,7 @@ class Main extends Controller
     /**
      * @param array $categories
      * @return array
-     * @throws \Exception
+     * @throws Exception
      */
     public function getProductCategories(array $categories): array
     {
@@ -435,7 +423,7 @@ class Main extends Controller
     /**
      * @param int $id
      * @return array
-     * @throws \Exception
+     * @throws Exception
      */
     public function getCategories(int $id): array
     {
@@ -444,8 +432,6 @@ class Main extends Controller
         if (!$category) {
             return [];
         }
-
-        $this->load->model('catalog/category');
 
         $category_id_oc = $this->getIdCategoryByOasisId(intval($category->id));
 
@@ -470,7 +456,7 @@ class Main extends Controller
     /**
      * @param int $id
      * @return int
-     * @throws \Exception
+     * @throws Exception
      */
     public function addCategory(int $id): int
     {
@@ -485,8 +471,6 @@ class Main extends Controller
         if ($category_id_oc) {
             return $category_id_oc;
         }
-
-        $this->load->model('localisation/language');
 
         $languages = $this->model_localisation_language->getLanguages();
         $data['category_description'] = [];
@@ -524,8 +508,6 @@ class Main extends Controller
         $data['category_seo_url'] = $this->getSeoUrl($data['category_store'], $category->slug);
         $data['category_layout'] = [0 => ''];
 
-        $this->load->model('catalog/category');
-
         $category_id = $this->model_catalog_category->addCategory($data);
         $this->model_extension_oasiscatalog_module_oasis->addOasisCategory([
             'oasis_id'    => $category->id,
@@ -538,13 +520,10 @@ class Main extends Controller
     /**
      * @param array $attributes
      * @return array
-     * @throws \Exception
+     * @throws Exception
      */
     public function addAttributes(array $attributes): array
     {
-        $this->load->model('catalog/attribute');
-        $this->load->model('localisation/language');
-
         $languages = $this->model_localisation_language->getLanguages();
         $result = [];
 
@@ -597,7 +576,7 @@ class Main extends Controller
     /**
      * @param string $id
      * @return int
-     * @throws \Exception
+     * @throws Exception
      */
     public function addBrand(string $id): int
     {
@@ -629,8 +608,6 @@ class Main extends Controller
             $data['image'] = '';
         }
 
-        $this->load->model('catalog/manufacturer');
-
         return $this->model_catalog_manufacturer->addManufacturer($data);
     }
 
@@ -640,9 +617,6 @@ class Main extends Controller
      */
     public function addOption(array $option): int
     {
-        $this->load->model('catalog/option');
-        $this->load->model('localisation/language');
-
         $languages = $this->model_localisation_language->getLanguages();
         $data['option_description'] = $this->toLanguagesArr($languages, 'name', (string)$option['name']);
         $data['type'] = 'radio';
@@ -668,9 +642,6 @@ class Main extends Controller
      */
     public function editOption(int $option_id, string $value): void
     {
-        $this->load->model('catalog/option');
-        $this->load->model('localisation/language');
-
         $data['option_description'] = $this->model_catalog_option->getDescriptions($option_id);
         $data['type'] = 'radio';
         $data['sort_order'] = '';
@@ -728,12 +699,10 @@ class Main extends Controller
      * @param string $value
      * @param int $quantity
      * @return array
-     * @throws \Exception
+     * @throws Exception
      */
     public function getOption(string $option_name, string $value, int $quantity): array
     {
-        $this->load->model('catalog/option');
-
         $data['option'] = $this->model_catalog_option->getOptions(['filter_name' => $option_name]);
 
         if (!$data['option']) {
@@ -766,8 +735,6 @@ class Main extends Controller
      */
     public function getOptionValue(int $option_id, string $needle): array
     {
-        $this->load->model('catalog/option');
-
         $option_values = $this->model_catalog_option->getValues($option_id);
         $key = array_search($needle, array_column($option_values, 'name'));
 
@@ -780,8 +747,6 @@ class Main extends Controller
      */
     public function getAttributeGroupId(array $languages): int
     {
-        $this->load->model('catalog/attribute_group');
-
         $attribute_groups = $this->model_catalog_attribute_group->getAttributeGroups();
         $name = 'Характеристики';
         $key = array_search($name, array_column($attribute_groups, 'name'));
@@ -812,8 +777,6 @@ class Main extends Controller
      */
     public function getSeoUrl(array $stores, string $slug): array
     {
-        $this->load->model('localisation/language');
-
         $data = [];
         $languages = $this->model_localisation_language->getLanguages();
 
@@ -840,8 +803,6 @@ class Main extends Controller
      */
     public function getStores(): array
     {
-        $this->load->model('setting/store');
-
         $data = [];
         $stores = $this->model_setting_store->getStores();
 
@@ -870,8 +831,6 @@ class Main extends Controller
      */
     public function getManufacturerIdByKeyword(string $keyword): int
     {
-        $this->load->model('design/seo_url');
-
         $result = $this->model_extension_oasiscatalog_module_oasis->getSeoUrls([
             'keyword' => $keyword,
             'key'     => 'manufacturer_id',

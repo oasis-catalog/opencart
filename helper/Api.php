@@ -76,6 +76,7 @@ class Api
      */
     public static function getStatProducts($config)
     {
+        $args = [];
         $data_args = $config->get('oasiscatalog_args');
         $data = [
             'not_on_order' => $data_args['not_on_order'] ?? '',
