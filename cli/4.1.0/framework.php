@@ -40,7 +40,7 @@ $log = new \Opencart\System\Library\Log($config->get('error_filename'));
 $registry->set('log', $log);
 
 // Error Handler
-set_error_handler(function(string $code, string $message, string $file, string $line) use ($log, $config) {
+set_error_handler(function(int $code, string $message, string $file, int $line) use ($log, $config) {
 	// error suppressed with @
 	if (@error_reporting() === 0) {
 		return false;
@@ -79,7 +79,7 @@ set_error_handler(function(string $code, string $message, string $file, string $
 });
 
 // Exception Handler
-set_exception_handler(function(\Throwable $e) use ($log, $config)  {
+set_exception_handler(function(\Throwable $e) use ($log, $config): void {
 	if ($config->get('error_log')) {
 		$log->write(get_class($e) . ':  ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
 	}
@@ -105,6 +105,9 @@ if ($config->has('action_event')) {
 	}
 }
 
+// Factory
+$registry->set('factory', new \Opencart\System\Engine\Factory($registry));
+
 // Loader
 $loader = new \Opencart\System\Engine\Loader($registry);
 $registry->set('load', $loader);
@@ -119,7 +122,7 @@ $registry->set('response', $response);
 
 // Database
 if ($config->get('db_autostart')) {
-	$db = new \Opencart\System\Library\DB($config->get('db_engine'), $config->get('db_hostname'), $config->get('db_username'), $config->get('db_password'), $config->get('db_database'), $config->get('db_port'));
+	$db = new \Opencart\System\Library\DB($config->get('db_engine'), $config->get('db_hostname'), $config->get('db_username'), $config->get('db_password'), $config->get('db_database'), $config->get('db_port'), $config->get('db_ssl_key'), $config->get('db_ssl_cert'), $config->get('db_ssl_ca'));
 	$registry->set('db', $db);
 
 	// Sync PHP and DB time zones
@@ -168,9 +171,6 @@ $loader->load->language($config->get('language_code'));
 
 // Url
 $registry->set('url', new \Opencart\System\Library\Url($config->get('site_url')));
-
-// Document
-$registry->set('document', new \Opencart\System\Library\Document());
 
 // Pre Actions
 foreach ($config->get('action_pre_action') as $pre_action) {

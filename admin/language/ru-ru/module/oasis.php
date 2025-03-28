@@ -50,6 +50,12 @@ $_['text_progress_step_next'] = "Следующий шаг %s из %s.";
 $_['text_progress_date'] = "Последний импорт завершен: ";
 $_['text_version'] = "Версия модуля ";
 $_['text_icon_copy'] = "Копировать";
+$_['text_collapse_all'] = "Свернуть все";
+$_['text_expand_all'] = "Развернуть все";
+$_['text_not_up_cat'] = "Не обновлять категории";
+$_['text_import_anytime'] = "Не ограничивать обновление";
+$_['text_select'] = "Выбрать";
+$_['text_clear'] = "Очистить";
 
 // Entry
 $_['entry_status'] = 'Статус';

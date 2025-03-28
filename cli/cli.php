@@ -57,17 +57,15 @@ if ((int)str_replace('.', '', $version) < (int)str_replace('.', '', MIN_VERSION)
 // Startup
 $version = substr($version, 0, 5);
 $version_supported = [
-    '4.0.1',
-    '4.0.2',
+    '4.0.1' => '4.0.1',
+    '4.0.2' => '4.0.1',
+    '4.1.0' => '4.1.0',
+    '4.2.0' => '4.1.0',
 ];
 
-if (in_array($version, $version_supported)) {
-    $version = '4.0.1';
-}
-
-if (file_exists(__DIR__ . '/' . $version . '/framework.php')) {
-    require_once(__DIR__ . '/' . $version . '/framework.php');
-} else {
+if(empty($version_supported[$version])) {
     die("ERROR: cli error startup framework");
 }
-?>
+else {
+    require_once(__DIR__ . '/' . $version_supported[$version] . '/framework.php');
+}

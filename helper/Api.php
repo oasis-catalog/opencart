@@ -2,10 +2,14 @@
 
 namespace Opencart\Admin\Controller\Extension\Oasis;
 
+use Opencart\Admin\Controller\Extension\Oasis\Config as OasisConfig;
 use Exception;
+
 
 class Api
 {
+    public static OasisConfig $cf;
+
     private const API_V4 = 'v4/';
     private const API_V3 = 'v3/';
     private const API_PRODUCTS = 'products';
@@ -74,32 +78,22 @@ class Api
      *
      * @return mixed|void
      */
-    public static function getStatProducts($config)
+    public static function getStatProducts($categories)
     {
-        $args = [];
-        $data_args = $config->get('oasiscatalog_args');
-        $data = [
-            'not_on_order' => $data_args['not_on_order'] ?? '',
-            'price_from'   => $data_args['price_from'] ?? '',
-            'price_to'     => $data_args['price_to'] ?? '',
-            'rating'       => $data_args['rating'] ?? '0,1,2,3,4,5',
-            'moscow'       => $data_args['moscow'] ?? '',
-            'europe'       => $data_args['europe'] ?? '',
-            'remote'       => $data_args['remote'] ?? '',
+        $args = [
+            'showDeleted'   => 1,
+            'not_on_order'  => self::$cf->is_not_on_order,
+            'price_from'    => self::$cf->price_from,
+            'price_to'      => self::$cf->price_to,
+            'rating'        => self::$cf->rating,
+            'moscow'        => self::$cf->is_wh_moscow,
+            'europe'        => self::$cf->is_wh_europe,
+            'remote'        => self::$cf->is_wh_remote,
+            'category'      => implode(',', empty(self::$cf->categories) ? Main::getOasisMainCategories( $categories ) : self::$cf->categories)
         ];
-
-        $category = $config->get('oasiscatalog_category');
-
-
-        if (empty($category)) {
-            $data['category'] = implode(',', array_keys(Main::getOasisMainCategories()));
-        } else {
-            $data['category'] = $category;
-        }
-
-        foreach ($data as $key => $value) {
-            if ($value) {
-                $args[$key] = $value;
+        foreach ($args as $key => $value) {
+            if (empty($value)) {
+                unset($args[$key]);
             }
         }
 
@@ -151,7 +145,7 @@ class Api
     public static function curl_query($version, $type, array $args = [], bool $sleep = true)
     {
         $args = array_merge([
-            'key'    => API_KEY,
+            'key'    => self::$cf->api_key,
             'format' => 'json',
         ], $args);
 
@@ -179,9 +173,9 @@ class Api
             if ($sleep) {
                 sleep(1);
             }
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             echo $e->getMessage() . PHP_EOL;
-            die();
+            return [];
         }
 
         return $result;

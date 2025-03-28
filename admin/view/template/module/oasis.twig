@@ -1,324 +1,363 @@
 {{ header }}{{ column_left }}
 <div id="content">
-    <div class="page-header">
-        <div class="container-fluid">
-            <div class="float-end">
-                <button type="submit" name="save" form="form-module" data-bs-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary">
-                    <i class="fa-solid fa-save"></i>
-                </button>
-                <a href="{{ back }}" data-bs-toggle="tooltip" title="{{ button_back }}" class="btn btn-light"><i class="fa-solid fa-reply"></i></a></div>
-            <h1>{{ heading_title }}</h1>
-            <ol class="breadcrumb">
-                {% for breadcrumb in breadcrumbs %}
-                    <li class="breadcrumb-item"><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
-                {% endfor %}
-            </ol>
-        </div>
-    </div>
-    <div class="container-fluid">
-        <div class="card">
-            <div class="card-header"><i class="fa-solid fa-pencil"></i> {{ text_edit }}</div>
-            <div class="card-body">
-                {% if error_warning %}
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <i class="fa fa-exclamation-circle"></i> {{ error_warning }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
-                    </div>
-                {% endif %}
-                <form action="{{ save }}" method="post" id="form-module" data-oc-toggle="ajax" class="form-horizontal" name="oasis">
-                    {% if api_key_status %}
-                        <div class="row">
-                            <div class="col-sm-12">
-                                <div class="row">
-                                    <div class="col-sm-12">
-                                        <h4>{{ progress_total }}</h4>
-                                    </div>
-                                    <div class="col-sm-12">
-                                        <div class="progress m-2">
-                                            <div id="upAjaxTotal" class="{{ progress_class }}" role="progressbar" style="width: {{ percentTotal }}%;"
-                                                 aria-valuenow="{{ percentTotal }}" aria-valuemin="0" aria-valuemax="100">{{ percentTotal }}%
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% if limit > 0 %}
-                                    <div class="row">
-                                        <div class="col-sm-12">
-                                            <h4><span class="oasis-process-text">{{ progress_step }}</span></h4>
-                                        </div>
-                                        <div class="col-sm-12">
-                                            <div class="progress m-2">
-                                                <div id="upAjaxStep" class="{{ progress_class }}" role="progressbar" style="width: {{ percentStep }}%;"
-                                                     aria-valuenow="{{ percentStep }}" aria-valuemin="0" aria-valuemax="100">{{ percentStep }}%
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                {% endif %}
-                                <div class="row">
-                                    <div class="col-sm-12">
-                                        <p class="m-2">{{ text_progress_date ~ progressDate }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    {% endif %}
-                    <div class="row mb-3">
-                        <label for="input-status" class="col-sm-3 col-form-label">{{ entry_status }}</label>
-                        <div class="col-sm-9">
-                            <div class="form-check form-switch form-switch-lg">
-                                <input type="hidden" name="oasiscatalog_status" value="0"/>
-                                <input type="checkbox" name="oasiscatalog_status" value="1" id="input-status"
-                                       class="form-check-input"{% if status %} checked{% endif %}/>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <label for="input-api-key" class="col-sm-3 col-form-label">{{ entry_api_key }}</label>
-                        <div class="col-sm-9">
-                            <input type="text" name="oasiscatalog_api_key" value="{{ api_key }}" class="form-control" id="input-api-key">
-                            <div id="error-api-key" class="invalid-feedback"></div>
-                        </div>
-                    </div>
-                    <div class="row mb-3">
-                        <label for="input-user-id" class="col-sm-3 col-form-label">{{ entry_user_id }}</label>
-                        <div class="col-sm-9">
-                            <input type="text" name="oasiscatalog_user_id" value="{{ user_id }}" class="form-control" id="input-user-id">
-                        </div>
-                    </div>
-                    {% if api_key_status %}
-                        <div class="row mb-3">
-                            <p class="text-center">{{ text_cron_product }}</p>
-                            <label for="input-cron-product" class="col-sm-3 col-form-label">{{ entry_cron_product }}</label>
-                            <div class="col-sm-9">
-                                <input type="text" value="{{ cron_product }}" class="form-control" id="input-cron-product" readonly onfocus="this.select()">
-                                <span id="copy-cron-product" class="ispan" data-bs-toggle="tooltip" data-bs-placement="right"
-                                      data-bs-title="{{ text_icon_copy }}">
-                                    <i class="fa fa-clone" aria-hidden="true"></i>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <p class="text-center">{{ text_cron_stock }}</p>
-                            <label for="input-cron-stock" class="col-sm-3 col-form-label">{{ entry_cron_stock }}</label>
-                            <div class="col-sm-9">
-                                <input type="text" value="{{ cron_stock }}" class="form-control" id="input-cron-stock" readonly onfocus="this.select()">
-                                <span id="copy-cron-stock" class="ispan" data-bs-toggle="tooltip" data-bs-placement="right"
-                                      data-bs-title="{{ text_icon_copy }}">
-                                    <i class="fa fa-clone" aria-hidden="true"></i>
-                                </span>
-                            </div>
-                        </div>
-                    {% endif %}
-                    {% if api_key_status %}
-                        <div class="row mb-3">
-                            <div class="col-sm-6">
-                                <div class="row mb-3">
-                                    <label for="input-currency" class="col-sm-6 col-form-label">{{ text_currency }}</label>
-                                    <div class="col-sm-6">
-                                        <select name="currency" id="input-currency" class="form-select col-sm-6">
-                                            {% set currentKey = currency ? currency : 'rub' %}
-                                            {% for key, value in currencies %}
-                                                <option value="{{ key }}"{% if key == currentKey %} selected="selected"{% endif %}>{{ value }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <label for="input-no-vat" class="col-sm-6 col-form-label">{{ text_no_vat }}</label>
-                                    <div class="col-sm-6">
-                                        <div class="form-check form-switch form-switch-lg">
-                                            <input type="hidden" name="no_vat" value="0"/>
-                                            <input type="checkbox" name="no_vat" value="1" id="input-no-vat"
-                                                   class="form-check-input"{% if no_vat %} checked{% endif %}/>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row mb-3" id="tax-class" style="{% if not no_vat %}display: none;{% endif %}">
-                                    <label for="input-tax-class" class="col-sm-6 col-form-label">{{ text_tax_class }}</label>
-                                    <div class="col-sm-6">
-                                        <select name="tax_class_id" id="input-tax-class" class="form-select" required>
-                                            <option value="0">{{ text_none }}</option>
-                                            {% for tax_class in tax_classes %}
-                                                {% if tax_class.tax_class_id == tax_class_id %}
-                                                    <option value="{{ tax_class.tax_class_id }}" selected="selected">{{ tax_class.title }}</option>
-                                                {% else %}
-                                                    <option value="{{ tax_class.tax_class_id }}">{{ tax_class.title }}</option>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <label for="input-not-on-order" class="col-sm-6 col-form-label">{{ text_not_on_order }}</label>
-                                    <div class="col-sm-6">
-                                        <div class="form-check form-switch form-switch-lg">
-                                            <input type="hidden" name="not_on_order" value="0"/>
-                                            <input type="checkbox" name="not_on_order" value="1" id="input-not-on-order"
-                                                   class="form-check-input"{% if not_on_order %} checked{% endif %}/>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <label for="input-price" class="col-sm-6 col-form-label">{{ text_price }}</label>
-                                    <div class="col-sm-6">
-                                        <div class="row mb-3">
-                                            <div class="col-sm-1">
-                                                <label for="input-price-from" class="col-form-label">{{ text_price_from }}</label>
-                                            </div>
-                                            <div class="col-sm-5">
-                                                {% if price_from %}
-                                                    <input type="text" name="price_from" value="{{ price_from }}" placeholder="{{ text_price_from }}"
-                                                           id="input-price-from" class="form-control">
-                                                {% else %}
-                                                    <input type="text" name="price_from" value="" placeholder="{{ text_price_from }}"
-                                                           id="input-price-from" class="form-control">
-                                                {% endif %}
+	<div class="page-header">
+		<div class="container-fluid">
+			<div class="float-end">
+				<button type="submit" name="save" form="form-module" data-bs-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary">
+					<i class="fa-solid fa-save"></i>
+				</button>
+				<a href="{{ back }}" data-bs-toggle="tooltip" title="{{ button_back }}" class="btn btn-light"><i class="fa-solid fa-reply"></i></a></div>
+			<h1>{{ heading_title }}</h1>
+			<ol class="breadcrumb">
+				{% for breadcrumb in breadcrumbs %}
+					<li class="breadcrumb-item"><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+				{% endfor %}
+			</ol>
+		</div>
+	</div>
+	<div class="container-fluid">
+		<div class="card">
+			<div class="card-header"><i class="fa-solid fa-pencil"></i> {{ text_edit }}</div>
+			<div class="card-body">
+				{% if error_warning %}
+					<div class="alert alert-danger alert-dismissible fade show" role="alert">
+						<i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+						<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+					</div>
+				{% endif %}
+				<form action="{{ save }}" method="post" id="form-module" data-oc-toggle="ajax" class="form-horizontal" name="oasis">
+					{% if api_key_status %}
+						<div class="row">
+							<div class="col-sm-12">
+								<div class="row">
+									<div class="col-sm-12">
+										<h4>{{ progress_total }}</h4>
+									</div>
+									<div class="col-sm-12">
+										<div class="progress m-2">
+											<div id="upAjaxTotal" class="{{ progress_class }}" role="progressbar" style="width: {{ percentTotal }}%;"
+												 aria-valuenow="{{ percentTotal }}" aria-valuemin="0" aria-valuemax="100">{{ percentTotal }}%
+											</div>
+										</div>
+									</div>
+								</div>
+								{% if limit > 0 %}
+									<div class="row">
+										<div class="col-sm-12">
+											<h4><span class="oasis-process-text">{{ progress_step }}</span></h4>
+										</div>
+										<div class="col-sm-12">
+											<div class="progress m-2">
+												<div id="upAjaxStep" class="{{ progress_class }}" role="progressbar" style="width: {{ percentStep }}%;"
+													 aria-valuenow="{{ percentStep }}" aria-valuemin="0" aria-valuemax="100">{{ percentStep }}%
+												</div>
+											</div>
+										</div>
+									</div>
+								{% endif %}
+								<div class="row">
+									<div class="col-sm-12">
+										<p class="m-2">{{ text_progress_date ~ progressDate }}</p>
+									</div>
+								</div>
+							</div>
+						</div>
+					{% endif %}
+					<div class="row mb-3">
+						<label for="input-status" class="col-sm-3 col-form-label">{{ entry_status }}</label>
+						<div class="col-sm-9">
+							<div class="form-check form-switch form-switch-lg">
+								<input type="hidden" name="status" value="0"/>
+								<input type="checkbox" name="status" value="1" id="input-status"
+									   class="form-check-input"{% if status %} checked{% endif %}/>
+							</div>
+						</div>
+					</div>
+					<div class="row mb-3">
+						<label for="input-api-key" class="col-sm-3 col-form-label">{{ entry_api_key }}</label>
+						<div class="col-sm-9">
+							<input type="text" name="api_key" value="{{ api_key }}" class="form-control" id="input-api-key">
+							<div id="error-api-key" class="invalid-feedback"></div>
+						</div>
+					</div>
+					<div class="row mb-3">
+						<label for="input-user-id" class="col-sm-3 col-form-label">{{ entry_user_id }}</label>
+						<div class="col-sm-9">
+							<input type="text" name="user_id" value="{{ user_id }}" class="form-control" id="input-user-id">
+						</div>
+					</div>
+					{% if api_key_status %}
+						<div class="row mb-3">
+							<p class="text-center">{{ text_cron_product }}</p>
+							<label for="input-cron-product" class="col-sm-3 col-form-label">{{ entry_cron_product }}</label>
+							<div class="col-sm-9">
+								<input type="text" value="{{ cron_product }}" class="form-control" id="input-cron-product" readonly onfocus="this.select()">
+								<span id="copy-cron-product" class="ispan" data-bs-toggle="tooltip" data-bs-placement="right"
+									  data-bs-title="{{ text_icon_copy }}">
+									<i class="fa fa-clone" aria-hidden="true"></i>
+								</span>
+							</div>
+						</div>
+						<div class="row mb-3">
+							<p class="text-center">{{ text_cron_stock }}</p>
+							<label for="input-cron-stock" class="col-sm-3 col-form-label">{{ entry_cron_stock }}</label>
+							<div class="col-sm-9">
+								<input type="text" value="{{ cron_stock }}" class="form-control" id="input-cron-stock" readonly onfocus="this.select()">
+								<span id="copy-cron-stock" class="ispan" data-bs-toggle="tooltip" data-bs-placement="right"
+									  data-bs-title="{{ text_icon_copy }}">
+									<i class="fa fa-clone" aria-hidden="true"></i>
+								</span>
+							</div>
+						</div>
+					{% endif %}
+					{% if api_key_status %}
+						<div class="row mb-3">
+							<div class="col-sm-6">
+								<div class="row mb-3">
+									<label for="input-currency" class="col-sm-6 col-form-label">{{ text_currency }}</label>
+									<div class="col-sm-6">
+										<select name="currency" id="input-currency" class="form-select col-sm-6">
+											{% set currentKey = currency ? currency : 'rub' %}
+											{% for key, value in currencies %}
+												<option value="{{ key }}"{% if key == currentKey %} selected="selected"{% endif %}>{{ value }}</option>
+											{% endfor %}
+										</select>
+									</div>
+								</div>
+								<div class="row mb-3">
+									<label for="input-no-vat" class="col-sm-6 col-form-label">{{ text_no_vat }}</label>
+									<div class="col-sm-6">
+										<div class="form-check form-switch form-switch-lg">
+											<input type="hidden" name="is_no_vat" value="0"/>
+											<input type="checkbox" name="is_no_vat" value="1" id="input-no-vat"
+												   class="form-check-input"{% if is_no_vat %} checked{% endif %}/>
+										</div>
+									</div>
+								</div>
+								<div class="row mb-3" id="tax-class" style="{% if not no_vat %}display: none;{% endif %}">
+									<label for="input-tax-class" class="col-sm-6 col-form-label">{{ text_tax_class }}</label>
+									<div class="col-sm-6">
+										<select name="tax_class_id" id="input-tax-class" class="form-select" required>
+											<option value="0">{{ text_none }}</option>
+											{% for tax_class in tax_classes %}
+												{% if tax_class.tax_class_id == tax_class_id %}
+													<option value="{{ tax_class.tax_class_id }}" selected="selected">{{ tax_class.title }}</option>
+												{% else %}
+													<option value="{{ tax_class.tax_class_id }}">{{ tax_class.title }}</option>
+												{% endif %}
+											{% endfor %}
+										</select>
+									</div>
+								</div>
+								<div class="row mb-3">
+									<label for="input-not-on-order" class="col-sm-6 col-form-label">{{ text_not_on_order }}</label>
+									<div class="col-sm-6">
+										<div class="form-check form-switch form-switch-lg">
+											<input type="hidden" name="is_not_on_order" value="0"/>
+											<input type="checkbox" name="is_not_on_order" value="1" id="input-not-on-order"
+												   class="form-check-input"{% if is_not_on_order %} checked{% endif %}/>
+										</div>
+									</div>
+								</div>
+								<div class="row mb-3">
+									<label for="input-price" class="col-sm-6 col-form-label">{{ text_price }}</label>
+									<div class="col-sm-6">
+										<div class="row mb-3">
+											<div class="col-sm-1">
+												<label for="input-price-from" class="col-form-label">{{ text_price_from }}</label>
+											</div>
+											<div class="col-sm-5">
+												{% if price_from %}
+													<input type="text" name="price_from" value="{{ price_from }}" placeholder="{{ text_price_from }}"
+														   id="input-price-from" class="form-control">
+												{% else %}
+													<input type="text" name="price_from" value="" placeholder="{{ text_price_from }}"
+														   id="input-price-from" class="form-control">
+												{% endif %}
 
-                                            </div>
-                                            <div class="col-sm-1">
-                                                <label for="input-price-to" class="col-form-label">{{ text_price_to }}</label>
-                                            </div>
-                                            <div class="col-sm-5">
-                                                {% if price_to %}
-                                                    <input type="text" name="price_to" value="{{ price_to }}" placeholder="{{ text_price_to }}"
-                                                           id="input-price-to"
-                                                           class="form-control">
-                                                {% else %}
-                                                    <input type="text" name="price_to" value="" placeholder="{{ text_price_to }}"
-                                                           id="input-price-to" class="form-control">
-                                                {% endif %}
+											</div>
+											<div class="col-sm-1">
+												<label for="input-price-to" class="col-form-label">{{ text_price_to }}</label>
+											</div>
+											<div class="col-sm-5">
+												{% if price_to %}
+													<input type="text" name="price_to" value="{{ price_to }}" placeholder="{{ text_price_to }}"
+														   id="input-price-to"
+														   class="form-control">
+												{% else %}
+													<input type="text" name="price_to" value="" placeholder="{{ text_price_to }}"
+														   id="input-price-to" class="form-control">
+												{% endif %}
 
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <div class="col-sm-6"></div>
-                                    <div class="col-sm-6" id="rating-group">
-                                        <label class="col-sm-12">
-                                            <input type="checkbox" name="rating" value="1" class="form-check-input"
-                                                   id="input-rating-group"{% if rating == 1 %} checked{% endif %}/>
-                                            {{ text_only_new }}
-                                        </label>
-                                        <label class="col-sm-12">
-                                            <input type="checkbox" name="rating" value="2" class="form-check-input"
-                                                   id="input-rating-group"{% if rating == 2 %} checked{% endif %}/>
-                                            {{ text_only_hits }}
-                                        </label>
-                                        <label class="col-sm-12">
-                                            <input type="checkbox" name="rating" value="3" class="form-check-input"
-                                                   id="input-rating-group"{% if rating == 3 %} checked{% endif %}/>
-                                            {{ text_only_discount }}
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <div class="col-sm-6"></div>
-                                    <div class="col-sm-6">
-                                        <label class="col-sm-12">
-                                            <input type="checkbox" name="moscow" value="1" class="form-check-input"
-                                                   id="input-warehouse"{% if moscow %} checked{% endif %}/>
-                                            {{ text_moscow }}
-                                        </label>
-                                        <label class="col-sm-12">
-                                            <input type="checkbox" name="europe" value="1" class="form-check-input"
-                                                   id="input-warehouse"{% if europe %} checked{% endif %}/>
-                                            {{ text_europe }}
-                                        </label>
-                                        <label class="col-sm-12">
-                                            <input type="checkbox" name="remote" value="1" class="form-check-input"
-                                                   id="input-warehouse"{% if remote %} checked{% endif %}/>
-                                            {{ text_remote }}
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <label for="input-limit" class="col-sm-6 col-form-label">{{ text_limit }}</label>
-                                    <div class="col-sm-6">
-                                        <input type="number" name="limit" value="{% if limit %}{{ limit }}{% endif %}" placeholder=""
-                                               id="input-limit" class="form-control wd-120" step="100">
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <label for="input-factor" class="col-sm-6 col-form-label">{{ text_factor }}</label>
-                                    <div class="col-sm-6">
-                                        <input type="number" name="factor" value="{% if factor %}{{ factor }}{% endif %}" step="0.01" placeholder=""
-                                               id="input-factor" class="form-control wd-120">
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <label for="input-increase" class="col-sm-6 col-form-label">{{ text_increase }}</label>
-                                    <div class="col-sm-6">
-                                        <input type="number" name="increase" value="{% if increase %}{{ increase }}{% endif %}" step="0.01" placeholder=""
-                                               id="input-increase" class="form-control wd-120">
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <label for="input-dealer" class="col-sm-6 col-form-label">{{ text_dealer }}</label>
-                                    <div class="col-sm-6">
-                                        <div class="form-check form-switch form-switch-lg">
-                                            <input type="hidden" name="dealer" value="0"/>
-                                            <input type="checkbox" name="dealer" value="1" id="input-dealer"
-                                                   class="form-check-input"{% if dealer %} checked{% endif %}/>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <label for="input-up_photo" class="col-sm-6 col-form-label">{{ text_up_photo }}</label>
-                                    <div class="col-sm-6">
-                                        <div class="form-check form-switch form-switch-lg">
-                                            <input type="hidden" name="up_photo" value="0"/>
-                                            <input type="checkbox" name="up_photo" value="1" id="input-up_photo"
-                                                   class="form-check-input"{% if up_photo %} checked{% endif %}/>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-                                <div class="row mb-3">
-                                    <label for="input-category" class="col-sm-12 col-form-label input-category">{{ text_select_categories }}</label>
-                                    <div class="col-sm-12">
-                                        {{ categories }}
-                                    </div>
-                                </div>
-                                <div class="row mb-3">
-                                    <label for="input-delete_exclude" class="col-sm-6 col-form-label">{{ text_delete_exclude }}</label>
-                                    <div class="col-sm-6">
-                                        <div class="form-check form-switch form-switch-lg">
-                                            <input type="hidden" name="delete_exclude" value="0"/>
-                                            <input type="checkbox" name="delete_exclude" value="1" id="input-delete_exclude"
-                                                   class="form-check-input"{% if delete_exclude %} checked{% endif %}/>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    {% endif %}
-                </form>
-            </div>
-        </div>
-        <div class="row">
-            <div class="text-center">
-                <small>{{ text_mail_to }}</small>
-            </div>
-        </div>
-        <div class="row">
-            <div class="text-center">
-                <small>{{ text_version ~ version }}</small>
-            </div>
-        </div>
-    </div>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div class="row mb-3">
+									<div class="col-sm-6"></div>
+									<div class="col-sm-6" id="rating-group">
+										<label class="col-sm-12">
+											<input type="checkbox" name="rating" value="1" class="form-check-input"
+												   id="input-rating-group"{% if rating == 1 %} checked{% endif %}/>
+											{{ text_only_new }}
+										</label>
+										<label class="col-sm-12">
+											<input type="checkbox" name="rating" value="2" class="form-check-input"
+												   id="input-rating-group"{% if rating == 2 %} checked{% endif %}/>
+											{{ text_only_hits }}
+										</label>
+										<label class="col-sm-12">
+											<input type="checkbox" name="rating" value="3" class="form-check-input"
+												   id="input-rating-group"{% if rating == 3 %} checked{% endif %}/>
+											{{ text_only_discount }}
+										</label>
+									</div>
+								</div>
+								<div class="row mb-3">
+									<div class="col-sm-6"></div>
+									<div class="col-sm-6">
+										<label class="col-sm-12">
+											<input type="checkbox" name="is_wh_moscow" value="1" class="form-check-input"
+												   id="input-warehouse"{% if is_wh_moscow %} checked{% endif %}/>
+											{{ text_moscow }}
+										</label>
+										<label class="col-sm-12">
+											<input type="checkbox" name="is_wh_europe" value="1" class="form-check-input"
+												   id="input-warehouse"{% if is_wh_europe %} checked{% endif %}/>
+											{{ text_europe }}
+										</label>
+										<label class="col-sm-12">
+											<input type="checkbox" name="is_wh_remote" value="1" class="form-check-input"
+												   id="input-warehouse"{% if is_wh_remote %} checked{% endif %}/>
+											{{ text_remote }}
+										</label>
+									</div>
+								</div>
+								<div class="row mb-3">
+									<label for="input-limit" class="col-sm-6 col-form-label">{{ text_limit }}</label>
+									<div class="col-sm-6">
+										<input type="number" name="limit" value="{% if limit %}{{ limit }}{% endif %}" placeholder=""
+											   id="input-limit" class="form-control wd-120" step="100">
+									</div>
+								</div>
+								<div class="row mb-3">
+									<label for="input-factor" class="col-sm-6 col-form-label">{{ text_factor }}</label>
+									<div class="col-sm-6">
+										<input type="number" name="price_factor" value="{% if price_factor %}{{ price_factor }}{% endif %}" step="0.01" placeholder=""
+											   id="input-factor" class="form-control wd-120">
+									</div>
+								</div>
+								<div class="row mb-3">
+									<label for="input-increase" class="col-sm-6 col-form-label">{{ text_increase }}</label>
+									<div class="col-sm-6">
+										<input type="number" name="price_increase" value="{% if price_increase %}{{ price_increase }}{% endif %}" step="0.01" placeholder=""
+											   id="input-increase" class="form-control wd-120">
+									</div>
+								</div>
+								<div class="row mb-3">
+									<label for="input-dealer" class="col-sm-6 col-form-label">{{ text_dealer }}</label>
+									<div class="col-sm-6">
+										<div class="form-check form-switch form-switch-lg">
+											<input type="hidden" name="is_price_dealer" value="0"/>
+											<input type="checkbox" name="is_price_dealer" value="1" id="input-dealer"
+												   class="form-check-input"{% if is_price_dealer %} checked{% endif %}/>
+										</div>
+									</div>
+								</div>
+								<div class="row mb-3">
+									<label for="input-up_photo" class="col-sm-6 col-form-label">{{ text_up_photo }}</label>
+									<div class="col-sm-6">
+										<div class="form-check form-switch form-switch-lg">
+											<input type="hidden" name="is_up_photo" value="0"/>
+											<input type="checkbox" name="is_up_photo" value="1" id="input-up_photo"
+												   class="form-check-input"{% if is_up_photo %} checked{% endif %}/>
+										</div>
+									</div>
+								</div>
+								<div class="row mb-3">
+									<label for="input-import_anytime" class="col-sm-6 col-form-label">{{ text_import_anytime }}</label>
+									<div class="col-sm-6">
+										<div class="form-check form-switch form-switch-lg">
+											<input type="hidden" name="is_import_anytime" value="0"/>
+											<input type="checkbox" name="is_import_anytime" value="1" id="input-import_anytime"
+												   class="form-check-input"{% if is_import_anytime %} checked{% endif %}/>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="col-sm-6">
+								<div class="row mb-3">
+									<label for="input-category" class="col-sm-12 col-form-label input-category">{{ text_select_categories }}</label>
+									<div class="col-sm-12">
+										<div id="tree" class="oa-tree">
+											<div class="oa-tree-ctrl">
+												<button type="button" class="btn btn-sm btn-light oa-tree-ctrl-m">{{ text_collapse_all }}</button>
+												<button type="button" class="btn btn-sm btn-light oa-tree-ctrl-p">{{ text_expand_all }}</button>
+											</div>
+											{{ categories }}
+										</div>
+									</div>
+								</div>
+								<div class="row mb-3">
+									<label for="input-delete_exclude" class="col-sm-6 col-form-label">{{ text_delete_exclude }}</label>
+									<div class="col-sm-6">
+										<div class="form-check form-switch form-switch-lg">
+											<input type="hidden" name="is_delete_exclude" value="0"/>
+											<input type="checkbox" name="is_delete_exclude" value="1" id="input-delete_exclude" class="form-check-input"{% if is_delete_exclude %} checked{% endif %}/>
+										</div>
+									</div>
+								</div>
+								<div class="row mb-3">
+									<label for="input-not_up_cat" class="col-sm-6 col-form-label">{{ text_not_up_cat }}</label>
+									<div class="col-sm-6">
+										<div class="form-check form-switch form-switch-lg">
+											<input type="hidden" name="is_not_up_cat" value="0"/>
+											<input type="checkbox" name="is_not_up_cat" value="1" id="input-not_up_cat" class="form-check-input"{% if is_not_up_cat %} checked{% endif %}/>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					{% endif %}
+				</form>
+			</div>
+		</div>
+		<div class="row">
+			<div class="text-center">
+				<small>{{ text_mail_to }}</small>
+			</div>
+		</div>
+		<div class="row">
+			<div class="text-center">
+				<small>{{ text_version ~ version }}</small>
+			</div>
+		</div>
+	</div>
+	<div id="oasis-relation" class="modal fade" tabindex="-1" tabindex="-1" aria-modal="true" role="dialog">
+		<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title">{{ text_select_categories }}</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body"></div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-danger mx-3 js-clear">{{ text_clear }}</button>
+					<button type="button" class="btn btn-primary js-ok">{{ text_select }}</button>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
 
 <script type="text/javascript"><!--
-    const user_token = '{{ user_token }}';
-    //--></script>
+	const user_token = '{{ user_token }}';
+	//--></script>
 
 {% if footer_scripts %}
-    {% for footer_script in footer_scripts %}
-        <script type="text/javascript" src="{{ footer_script.href }}"></script>
-    {% endfor %}
+	{% for footer_script in footer_scripts %}
+		<script type="text/javascript" src="{{ footer_script.href }}"></script>
+	{% endfor %}
 {% endif %}
 
 {{ footer }}

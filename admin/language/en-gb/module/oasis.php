@@ -50,6 +50,12 @@ $_['text_progress_step_next'] = "Next step %s of %s.";
 $_['text_progress_date'] = "Last import completed: ";
 $_['text_version'] = "Module version ";
 $_['text_icon_copy'] = "Copy";
+$_['text_collapse_all'] = "Collapse all";
+$_['text_expand_all'] = "Expand all";
+$_['text_not_up_cat'] = "Do not update categories";
+$_['text_import_anytime'] = "Do not limit update";
+$_['text_select'] = "Select";
+$_['text_clear'] = "Clear";
 
 // Entry
 $_['entry_status'] = 'Status';
