@@ -12,8 +12,7 @@ use Opencart\Admin\Controller\Extension\Oasis\Config as OasisConfig;
 use \Opencart\System\Engine\Registry;
 
 
-class Cli
-{
+class Cli {
 	private OasisConfig $cf;
 	private Registry $registry;
 

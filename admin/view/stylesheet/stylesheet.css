@@ -71,6 +71,7 @@ Tree categories
 	display: flex;
 	align-items: center;
 	line-height: 1;
+	white-space: nowrap;
 }
 
 .oa-tree-childs{

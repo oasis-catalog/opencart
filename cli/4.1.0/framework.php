@@ -1,9 +1,4 @@
 <?php
-/*
- * Oasiscatalog OC4 CLI - v1.0
- * Require OpenCart 4.x
- */
-
 
 require_once(DIR_SYSTEM . 'startup.php');
 
@@ -201,15 +196,15 @@ if (isset($options['up']) || isset($options['u'])) {
 
 if ($errors) {
 	$help = "
-usage: php /path/to/site/cli/oasis_cli.php [-k|--key=secret] [-u|--up]
+usage: php /path/to/site/cli/cli.php [-k|--key=secret] [-u|--up]
 
 Options:
 		-k  --key      substitute your secret key from the Oasis module
 		-u  --up       specify this key to use the update
 Example import products:
-		php /path/to/site/cli/oasis_cli.php --key=secret
+		php /path/to/site/cli/cli.php --key=secret
 Example update stock (quantity) products:
-		php /path/to/site/cli/oasis_cli.php --key=secret --up
+		php /path/to/site/cli/cli.php --key=secret --up
 
 Errors: " . $errors . PHP_EOL;
 	die($help);

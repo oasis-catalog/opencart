@@ -61,17 +61,16 @@ class Config {
 	private static $instance;
 
 
-    public static function instance(Registry $registry = null, $opt = []) {
+	public static function instance(?Registry $registry = null, $opt = []) {
+		if (!isset(self::$instance)) {
+			if(empty($registry)){
+				throw new Exception('Opencart Registry empty');
+			}
+			self::$instance = new self($registry, $opt);
+		}
 
-        if (!isset(self::$instance)) {
-        	if(empty($registry)){
-        		throw new Exception('Opencart Registry empty');
-        	}
-            self::$instance = new self($registry, $opt);
-        }
-
-        return self::$instance;
-    }
+		return self::$instance;
+	}
 
 	public function __construct(Registry $registry, $opt = []) {
 		$this->registry = $registry;

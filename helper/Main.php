@@ -953,7 +953,7 @@ class Main
 	 *
 	 * @return string
 	 */
-	public static function buildTreeRadioCats( $data, array $checked_id = null, int $parent_id = 0 ): string {
+	public static function buildTreeRadioCats( $data, ?array $checked_id = null, int $parent_id = 0 ): string {
 		$treeItem = '';
 		if ( ! empty( $data[ $parent_id ] ) ) {
 			foreach($data[ $parent_id ] as $item){

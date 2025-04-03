@@ -17,19 +17,13 @@ class Oasis extends Controller
 {
 	private array $error = [];
 	private const ROUTE = 'extension/oasiscatalog/module/oasis';
-	private const VERSION_MODULE = '4.0.6';
+	private const VERSION_MODULE = '4.0.7';
 
-	/**
-	 * @throws \Exception
-	 */
 	public function __construct($registry)
 	{
 		parent::__construct($registry);
 	}
 
-	/**
-	 * @throws Exception
-	 */
 	public function index(): void
 	{
 		$this->load->language(self::ROUTE);
@@ -99,8 +93,6 @@ class Oasis extends Controller
 				$data['is_wh_moscow'] = $cf->is_wh_moscow;
 				$data['is_wh_europe'] = $cf->is_wh_europe;
 				$data['is_wh_remote'] = $cf->is_wh_remote;
-
-
 
 				$optBar = $cf->getOptBar();
 
@@ -309,8 +301,10 @@ class Oasis extends Controller
 		]));
 	}
 
-	public function get_all_oasis_categories(): void {
+	public function get_all_categories(): void {
 		$this->load->model('catalog/category');
+		$this->load->language(self::ROUTE);
+
 		$categories = $this->model_catalog_category->getCategories();
 
 		$arr = [];
@@ -326,8 +320,8 @@ class Oasis extends Controller
 
 		$tree_content = '<div class="oa-tree">
 				<div class="oa-tree-ctrl">
-					<button type="button" class="btn btn-sm btn-light oa-tree-ctrl-m">Свернуть все</button>
-					<button type="button" class="btn btn-sm btn-light oa-tree-ctrl-p">Развернуть все</button>
+					<button type="button" class="btn btn-sm btn-light oa-tree-ctrl-m">'.$this->language->get('text_collapse_all').'</button>
+					<button type="button" class="btn btn-sm btn-light oa-tree-ctrl-p">'.$this->language->get('text_expand_all').'</button>
 				</div>' . Main::buildTreeRadioCats($arr) . '</div>';
 
 		$this->response->setOutput($tree_content);

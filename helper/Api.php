@@ -6,8 +6,7 @@ use Opencart\Admin\Controller\Extension\Oasis\Config as OasisConfig;
 use Exception;
 
 
-class Api
-{
+class Api {
     public static OasisConfig $cf;
 
     private const API_V4 = 'v4/';
@@ -18,8 +17,7 @@ class Api
      * @param array $IDS
      * @return array
      */
-    public static function getProductsOasisOnlyFieldCategories(array $IDS = []): array
-    {
+    public static function getProductsOasisOnlyFieldCategories(array $IDS = []): array {
         $result = [];
         $args = [
             'fields' => 'id,categories',
