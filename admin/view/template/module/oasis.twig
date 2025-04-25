@@ -274,6 +274,18 @@
 										</div>
 									</div>
 								</div>
+								{% if is_cdn_available %}
+								<div class="row mb-3">
+									<label for="input-is_cdn_photo" class="col-sm-6 col-form-label">{{ text_cdn_photo }}</label>
+									<div class="col-sm-6">
+										<div class="form-check form-switch form-switch-lg">
+											<input type="hidden" name="is_cdn_photo" value="0"/>
+											<input type="checkbox" name="is_cdn_photo" value="1" id="input-is_cdn_photo"
+												   class="form-check-input"{% if is_cdn_photo %} checked{% endif %}/>
+										</div>
+									</div>
+								</div>
+								{% endif %}
 								<div class="row mb-3">
 									<label for="input-import_anytime" class="col-sm-6 col-form-label">{{ text_import_anytime }}</label>
 									<div class="col-sm-6">

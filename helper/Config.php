@@ -8,8 +8,12 @@ use \Opencart\System\Engine\Registry;
 
 
 class Config {
-	private Registry $registry;
+	public const IMG_SIZE_THUMBNAIL = 	[80, 60];
+	public const IMG_SIZE_SMALL = 		[220, 165];
+	public const IMG_SIZE_BIG = 		[640, 480];
+	public const IMG_SIZE_SUPERBIG =	[1000, 750];
 
+	private Registry $registry;
 
 	public bool $is_debug = false;
 	public bool $is_debug_log = false;
@@ -55,6 +59,9 @@ class Config {
 
 	public bool $is_up_photo;
 	public bool $is_delete_exclude;
+	public bool $is_cdn_photo;
+	public bool $is_cdn_available;
+
 
 	private bool $is_init_rel = false;
 
@@ -161,6 +168,10 @@ class Config {
 		$this->is_wh_remote =			!empty($opt['is_wh_remote']);
 		$this->is_up_photo =			!empty($opt['is_up_photo']);
 		$this->is_delete_exclude =		!empty($opt['is_delete_exclude']);
+		$this->is_cdn_photo =			!empty($opt['is_cdn_photo']);
+
+		$version = (int)implode('', array_slice(explode('.', VERSION), 0, 3));
+		$this->is_cdn_available = $version >= 410;
 	}
 
 	public function initRelation() {

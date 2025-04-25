@@ -17,7 +17,7 @@ class Oasis extends Controller
 {
 	private array $error = [];
 	private const ROUTE = 'extension/oasiscatalog/module/oasis';
-	private const VERSION_MODULE = '4.0.7';
+	private const VERSION_MODULE = '4.0.8';
 
 	public function __construct($registry)
 	{
@@ -77,22 +77,24 @@ class Oasis extends Controller
 			$data['api_key_status'] = $cf->loadCurrencies();
 
 			if ($data['api_key_status']) {
-				$data['tax_class_id'] = $cf->tax_class_id;
-				$data['is_price_dealer'] = $cf->is_price_dealer;
-				$data['is_up_photo'] = $cf->is_up_photo;
-				$data['is_import_anytime'] = $cf->is_import_anytime;
-				$data['is_not_up_cat'] = $cf->is_not_up_cat;
-				$data['is_delete_exclude'] = $cf->is_delete_exclude;
-				$data['is_no_vat'] = $cf->is_no_vat;
-				$data['is_not_on_order'] = $cf->is_not_on_order;
-				$data['price_from'] = $cf->price_from;
-				$data['price_to'] = $cf->price_to;
-				$data['price_factor'] = $cf->price_factor;
-				$data['price_increase'] = $cf->price_increase;
-				$data['rating'] = $cf->rating;
-				$data['is_wh_moscow'] = $cf->is_wh_moscow;
-				$data['is_wh_europe'] = $cf->is_wh_europe;
-				$data['is_wh_remote'] = $cf->is_wh_remote;
+				$data['tax_class_id'] =			$cf->tax_class_id;
+				$data['is_price_dealer'] =		$cf->is_price_dealer;
+				$data['is_up_photo'] =			$cf->is_up_photo;
+				$data['is_import_anytime'] =	$cf->is_import_anytime;
+				$data['is_not_up_cat'] =		$cf->is_not_up_cat;
+				$data['is_delete_exclude'] =	$cf->is_delete_exclude;
+				$data['is_no_vat'] =			$cf->is_no_vat;
+				$data['is_not_on_order'] =		$cf->is_not_on_order;
+				$data['price_from'] =			$cf->price_from;
+				$data['price_to'] =				$cf->price_to;
+				$data['price_factor'] =			$cf->price_factor;
+				$data['price_increase'] =		$cf->price_increase;
+				$data['rating'] =				$cf->rating;
+				$data['is_wh_moscow'] =			$cf->is_wh_moscow;
+				$data['is_wh_europe'] =			$cf->is_wh_europe;
+				$data['is_wh_remote'] =			$cf->is_wh_remote;
+				$data['is_cdn_photo'] =			$cf->is_cdn_photo;
+				$data['is_cdn_available'] =		$cf->is_cdn_available;
 
 				$optBar = $cf->getOptBar();
 
@@ -174,6 +176,7 @@ class Oasis extends Controller
 				'is_delete_exclude' =>			!empty($post['is_delete_exclude']),
 				'is_import_anytime' =>			!empty($post['is_import_anytime']),
 				'is_not_up_cat' =>				!empty($post['is_not_up_cat']),
+				'is_cdn_photo' =>				!empty($post['is_cdn_photo']),
 			],
 			// clear progress
 			'module_oasis_progress' => [
@@ -189,6 +192,22 @@ class Oasis extends Controller
 			$this->load->model('setting/setting');
 			$this->model_setting_setting->editSetting('module_oasis', $attr);
 			$this->cache->delete('oasiscatalog');
+
+			$this->load->model('setting/event');
+
+			$is_cdn_photo = (!empty($post['is_cdn_photo']) && !empty($post['status'])) ?? 0;
+
+			$this->model_setting_event->editStatusByCode('oasiscatalog_a_v_catalog_product_form', $is_cdn_photo);
+			$this->model_setting_event->editStatusByCode('oasiscatalog_a_v_catalog_product_list', $is_cdn_photo);
+			$this->model_setting_event->editStatusByCode('oasiscatalog_c_c_product_thumb', $is_cdn_photo);
+			$this->model_setting_event->editStatusByCode('oasiscatalog_c_v_account_wishlist_list', $is_cdn_photo);
+			$this->model_setting_event->editStatusByCode('oasiscatalog_c_v_checkout_cart_list', $is_cdn_photo);
+			$this->model_setting_event->editStatusByCode('oasiscatalog_c_v_common_cart', $is_cdn_photo);
+			$this->model_setting_event->editStatusByCode('oasiscatalog_c_v_product_compare', $is_cdn_photo);
+			$this->model_setting_event->editStatusByCode('oasiscatalog_c_v_product_product', $is_cdn_photo);
+
+
+
 			$json['success'] = $this->language->get('text_success');
 			$json['redirect'] = $this->url->link(self::ROUTE, 'user_token=' . $this->session->data['user_token'], true);
 		}
@@ -258,6 +277,73 @@ class Oasis extends Controller
 
 		$this->load->model(self::ROUTE);
 		$this->model_extension_oasiscatalog_module_oasis->install();
+
+		$this->load->model('setting/event');
+
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_a_v_catalog_product_form',
+			'description' => 'oasiscatalog, cdn hook image server',
+			'trigger'     => 'admin/view/catalog/product_form/before',
+			'action'      => 'extension/oasiscatalog/event/event.catalog_product_form',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_a_v_catalog_product_list',
+			'description' => 'oasiscatalog, cdn hook image server',
+			'trigger'     => 'admin/view/catalog/product_list/before',
+			'action'      => 'extension/oasiscatalog/event/event.catalog_product_list',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_c_c_product_thumb',
+			'description' => 'oasiscatalog, cdn hook image server',
+			'trigger'     => 'catalog/controller/product/thumb/before',
+			'action'      => 'extension/oasiscatalog/event/event.product_thumb',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_c_v_product_product',
+			'description' => 'oasiscatalog, cdn hook image server',
+			'trigger'     => 'catalog/view/product/product/before',
+			'action'      => 'extension/oasiscatalog/event/event.product_product',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_c_v_checkout_cart_list',
+			'description' => 'oasiscatalog, cdn hook image server',
+			'trigger'     => 'catalog/view/checkout/cart_list/before',
+			'action'      => 'extension/oasiscatalog/event/event.checkout_cart_list',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_c_v_common_cart',
+			'description' => 'oasiscatalog, cdn hook image server',
+			'trigger'     => 'catalog/view/common/cart/before',
+			'action'      => 'extension/oasiscatalog/event/event.common_cart',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_c_v_product_compare',
+			'description' => 'oasiscatalog, cdn hook image server',
+			'trigger'     => 'catalog/view/product/compare/before',
+			'action'      => 'extension/oasiscatalog/event/event.product_compare',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_c_v_account_wishlist_list',
+			'description' => 'oasiscatalog, cdn hook image server',
+			'trigger'     => 'catalog/view/account/wishlist_list/before',
+			'action'      => 'extension/oasiscatalog/event/event.account_wishlist_list',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
 	}
 
 	/**
@@ -265,6 +351,17 @@ class Oasis extends Controller
 	 */
 	public function uninstall(): void
 	{
+		$this->load->model('setting/event');
+		$this->model_setting_event->deleteEventByCode('oasiscatalog_a_v_catalog_product_form');
+		$this->model_setting_event->deleteEventByCode('oasiscatalog_a_v_catalog_product_list');
+		$this->model_setting_event->deleteEventByCode('oasiscatalog_c_c_product_thumb');
+		$this->model_setting_event->deleteEventByCode('oasiscatalog_c_v_account_wishlist_list');
+		$this->model_setting_event->deleteEventByCode('oasiscatalog_c_v_checkout_cart_list');
+		$this->model_setting_event->deleteEventByCode('oasiscatalog_c_v_common_cart');
+		$this->model_setting_event->deleteEventByCode('oasiscatalog_c_v_product_compare');
+		$this->model_setting_event->deleteEventByCode('oasiscatalog_c_v_product_product');
+
+
 		$cf = OasisConfig::instance($this->registry);
 		$cf->deactivate();
 	}

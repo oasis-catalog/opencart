@@ -125,15 +125,17 @@ class Main
 		$data['product_category'] = self::$cf->is_not_up_cat ? $this->registry->model_catalog_product->getCategories($product_info['product_id']) :
 															$this->getProductCategories($product_oasis->categories);
 
-
 		$productImages = $this->registry->model_catalog_product->getImages(intval($product_info['product_id']));
 
-		if (self::$cf->is_up_photo && $this->checkImages($product_oasis->images, $productImages) === false) {
+		if (self::$cf->is_up_photo || $this->checkImages($product_oasis->images, $productImages) === false) {
 			$this->deleteImgInProduct($productImages);
 			$data['product_image'] = $this->prepareImagesProduct($product_oasis->images, end($data['product_category']));
 
 			if (!empty($data['product_image'])) {
 				$data['image'] = $data['product_image'][0]['image'];
+			}
+			else{
+				$data['image'] = 'placeholder.png';
 			}
 		} else {
 			$data['product_image'] = [];
@@ -146,6 +148,7 @@ class Main
 			}
 			unset($key, $value);
 		}
+		$this->updateImageCDN($product_oasis);
 
 		$product_data = $this->registry->model_extension_oasiscatalog_module_oasis->getOasisProduct($product_oasis->group_id);
 		if ($product_data) {
@@ -176,6 +179,7 @@ class Main
 		} else {
 			$this->registry->model_extension_oasiscatalog_module_oasis->editOasisProduct($product_oasis->id, $args);
 		}
+
 		self::$cf->log('OAId='.$product_oasis->id.' updated OCId=' . $product_info['product_id']);
 		return true;
 	}
@@ -199,6 +203,9 @@ class Main
 		if (!empty($data['product_image'])) {
 			$data['image'] = $data['product_image'][0]['image'];
 		}
+		else{
+			$data['image'] = '';
+		}
 
 		$product_id = $this->registry->model_catalog_product->addProduct($this->setProduct($data, $product));
 
@@ -213,6 +220,7 @@ class Main
 			'product_id'       => $product_id,
 		];
 		$this->registry->model_extension_oasiscatalog_module_oasis->addOasisProduct($args);
+		$this->updateImageCDN($product);
 
 		return $product_id;
 	}
@@ -1069,7 +1077,7 @@ class Main
 	{
 		$result = [];
 
-		if (is_array($images)) {
+		if(!self::$cf->is_cdn_photo && is_array($images)){
 			foreach ($images as $image) {
 				if (isset($image->superbig)) {
 					$data_img = [
@@ -1083,10 +1091,50 @@ class Main
 					];
 				}
 			}
-
 		}
-
 		return $result;
+	}
+
+
+	public function updateImageCDN($product_oasis): void
+	{
+		if(self::$cf->is_cdn_photo){
+			$cdn_db_images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDNFromOID($product_oasis->id);
+
+			$is_update = self::$cf->is_up_photo;
+			if (!$is_update){
+				if(count($cdn_db_images) != count($product_oasis->images)){
+					$is_update = true;
+				}
+				else {
+					foreach($cdn_db_images as $i => $img){
+						if ($cdn_db_images[$i]['updated_at'] < $product_oasis->images[$i]->updated_at) {
+							$is_update = true;
+							break;
+						}
+					}
+				}
+			}
+			if ($is_update){
+				$this->registry->model_extension_oasiscatalog_module_oasis->delImgsCDNFromOID($product_oasis->id);
+
+				$main = 1;
+				foreach($product_oasis->images as $img){
+					$this->registry->model_extension_oasiscatalog_module_oasis->addImgCDNFromOID($product_oasis->id, [
+						'main' => $main,
+						'url_superbig' => $img->superbig ?? '',
+						'url_big' => $img->big ?? '',
+						'url_small' => $img->small ?? '',
+						'url_thumbnail' => $img->thumbnail ?? '',
+						'updated_at' => $img->updated_at ?? 0
+					]);
+					$main = 0;
+				}
+			}
+		}
+		else {
+			$this->registry->model_extension_oasiscatalog_module_oasis->delImgsCDNFromOID($product_oasis->id);
+		}
 	}
 
 	/**

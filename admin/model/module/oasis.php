@@ -57,6 +57,48 @@ class Oasis extends Model
 		$this->db->query("DELETE FROM `" . DB_PREFIX . "oasis_images` WHERE `name` = '" . $this->db->escape($name) . "'");
 	}
 
+	public function addImgCDNFromOID(string $product_id_oasis, array $data): void
+	{
+		$this->db->query("
+			INSERT INTO `" . DB_PREFIX . "oasis_cdn_images` (oasis_product_id, main, url_superbig, url_big, url_small, url_thumbnail, updated_at)
+			SELECT p.id, ".$data['main'].", '".$this->db->escape($data['url_superbig'])."', '".$this->db->escape($data['url_big'])."', '".$this->db->escape($data['url_small'])."', '".$this->db->escape($data['url_thumbnail'])."', ".$data['updated_at']."
+			FROM `" . DB_PREFIX . "oasis_product` as p 
+			where p.product_id_oasis = '".$this->db->escape($product_id_oasis)."'"
+		);
+	}
+
+	public function delImgsCDNFromOID(string $product_id_oasis): void
+	{
+		$this->db->query("
+			DELETE img FROM `" . DB_PREFIX . "oasis_cdn_images` as img
+			LEFT JOIN `" . DB_PREFIX . "oasis_product` as p ON p.id = img.oasis_product_id
+			WHERE p.product_id_oasis = '".$this->db->escape($product_id_oasis)."'"
+		);
+	}
+
+	public function getImgsCDNFromOID(string $product_id_oasis): array
+	{
+		$query = $this->db->query("
+			SELECT img.* FROM `" . DB_PREFIX . "oasis_cdn_images` as img
+			LEFT JOIN `" . DB_PREFIX . "oasis_product` as p ON p.id = img.oasis_product_id
+			WHERE p.product_id_oasis = '".$this->db->escape($product_id_oasis)."'
+			ORDER BY img.id DESC"
+		);
+
+		return $query->rows ?? [];
+	}
+
+	public function getImgsCDNFromID(int $product_id): array
+	{
+		$query = $this->db->query("
+			SELECT img.* FROM `" . DB_PREFIX . "oasis_cdn_images` as img
+			LEFT JOIN `" . DB_PREFIX . "oasis_product` as p ON p.id = img.oasis_product_id
+			WHERE p.product_id = ".$product_id
+		);
+
+		return $query->rows ?? [];
+	}
+
 	public function setOption($store_id, $code, $key, $value)
 	{
 		if (!empty($code) && !empty($key)) {
@@ -252,15 +294,6 @@ class Oasis extends Model
 		  PRIMARY KEY(`order_id`)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
-		$this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "oasis_product` (
-		  `product_id_oasis` CHAR(12) NOT NULL,
-		  `rating` TINYINT(1) NOT NULL,
-		  `option_date_modified` DATETIME NOT NULL,
-		  `option_value_id` INT(11) NOT NULL DEFAULT '0',
-		  `product_id` INT(11) NOT NULL,
-		  PRIMARY KEY (`product_id_oasis`)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
-
 		$this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "oasis_category` (
 		  `oasis_id` CHAR(12) NOT NULL,
 		  `category_id` INT NOT NULL,
@@ -273,5 +306,28 @@ class Oasis extends Model
 		  `date_added` int unsigned NOT NULL,
 		  PRIMARY KEY (`name`)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
+
+		$this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "oasis_product` (
+		  `id` INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		  `product_id_oasis` CHAR(12) NOT NULL,
+		  `rating` TINYINT(1) NOT NULL,
+		  `option_date_modified` DATETIME NOT NULL,
+		  `option_value_id` INT(11) NOT NULL DEFAULT '0',
+		  `product_id` INT(11) NOT NULL
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+		$this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "oasis_cdn_images` (
+		  `id` INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		  `oasis_product_id` INT(11) NOT NULL,
+		  `main` TINYINT(1) NOT NULL DEFAULT 0,
+		  `url_superbig` char(255) NOT NULL,
+		  `url_big` char(255) NOT NULL,
+		  `url_small` char(255) NOT NULL,
+		  `url_thumbnail` char(255) NOT NULL,
+		  `updated_at` int unsigned NOT NULL,
+		  FOREIGN KEY (`oasis_product_id`)
+		    REFERENCES `" . DB_PREFIX . "oasis_product`(`id`)
+		    ON DELETE CASCADE
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 	}
 }
