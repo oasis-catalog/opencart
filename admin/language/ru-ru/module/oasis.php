@@ -55,6 +55,7 @@ $_['text_collapse_all'] = "Свернуть все";
 $_['text_expand_all'] = "Развернуть все";
 $_['text_not_up_cat'] = "Не обновлять категории";
 $_['text_import_anytime'] = "Не ограничивать обновление";
+$_['text_import_anytime'] = "Не ограничивать обновление";
 $_['text_select'] = "Выбрать";
 $_['text_clear'] = "Очистить";
 

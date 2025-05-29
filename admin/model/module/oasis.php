@@ -88,7 +88,7 @@ class Oasis extends Model
 		return $query->rows ?? [];
 	}
 
-	public function getImgsCDNFromID(int $product_id): array
+	public function getImgsCDN(int $product_id): array
 	{
 		$query = $this->db->query("
 			SELECT img.* FROM `" . DB_PREFIX . "oasis_cdn_images` as img
@@ -166,6 +166,15 @@ class Oasis extends Model
 	public function editOasisProduct(string $product_id_oasis, array $data)
 	{
 		$this->db->query("UPDATE " . DB_PREFIX . "oasis_product SET rating = '" . (int)$data['rating'] . "', option_date_modified = NOW(), option_value_id = '" . (int)$data['option_value_id'] . "', product_id = '" . (int)$data['product_id'] . "' WHERE product_id_oasis = '" . $this->db->escape($product_id_oasis) . "'");
+	}
+
+	public function deleteOasisProduct(int $product_id)
+	{
+		$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "oasis_product WHERE product_id = '" . $this->db->escape($product_id) . "'");
+		foreach ($query->rows as $row) {
+			$this->delImgsCDNFromOID($row['product_id_oasis']);
+			$this->db->query("DELETE FROM `" . DB_PREFIX . "oasis_product` WHERE `id` = '" . $row['id'] . "'");
+		}
 	}
 
 	public function getOasisProduct(string $product_id_oasis): array
@@ -284,6 +293,11 @@ class Oasis extends Model
 	public function deleteOasisCategory(int $category_id): void
 	{
 		$this->db->query("DELETE FROM `" . DB_PREFIX . "oasis_category` WHERE `category_id` = '" . $category_id . "'");
+	}
+
+	public function setProductImage(int $product_id, string $image): void
+	{
+		$this->db->query("UPDATE `" . DB_PREFIX . "product` SET `image` = '" . $this->db->escape((string)$image) . "' WHERE `product_id` = '" . (int)$product_id . "'");
 	}
 
 	public function install(): void

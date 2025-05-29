@@ -102,9 +102,9 @@ class Api {
      * @param array $args
      * @return mixed|void
      */
-    public static function getCategoriesOasis(array $args = [])
+    public static function getCategoriesOasis(string $fields = '')
     {
-        return self::curl_query(self::API_V4, 'categories', $args);
+        return self::curl_query(self::API_V4, 'categories', ['fields' => $fields ?? 'id,parent_id,root,level,slug,name,path']);
     }
 
     /**

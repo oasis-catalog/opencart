@@ -2,10 +2,10 @@
 
 namespace Opencart\Admin\Controller\Extension\Oasiscatalog\Module;
 
-require_once(realpath(dirname(__FILE__) . '/../../..') . '/helper/Cli.php');
-require_once(realpath(dirname(__FILE__) . '/../../..') . '/helper/Api.php');
-require_once(realpath(dirname(__FILE__) . '/../../..') . '/helper/Main.php');
-require_once(realpath(dirname(__FILE__) . '/../../..') . '/helper/Config.php');
+require_once(realpath(dirname(__FILE__) . '/../../..') . '/helper/cli.php');
+require_once(realpath(dirname(__FILE__) . '/../../..') . '/helper/api.php');
+require_once(realpath(dirname(__FILE__) . '/../../..') . '/helper/main.php');
+require_once(realpath(dirname(__FILE__) . '/../../..') . '/helper/config.php');
 
 use Exception;
 use Opencart\Admin\Controller\Extension\Oasis\Api;
@@ -17,7 +17,7 @@ class Oasis extends Controller
 {
 	private array $error = [];
 	private const ROUTE = 'extension/oasiscatalog/module/oasis';
-	private const VERSION_MODULE = '4.0.8';
+	private const VERSION_MODULE = '4.0.9';
 
 	public function __construct($registry)
 	{
@@ -95,6 +95,7 @@ class Oasis extends Controller
 				$data['is_wh_remote'] =			$cf->is_wh_remote;
 				$data['is_cdn_photo'] =			$cf->is_cdn_photo;
 				$data['is_cdn_available'] =		$cf->is_cdn_available;
+				$data['is_fast_import'] =		$cf->is_fast_import;
 
 				$optBar = $cf->getOptBar();
 
@@ -177,6 +178,7 @@ class Oasis extends Controller
 				'is_import_anytime' =>			!empty($post['is_import_anytime']),
 				'is_not_up_cat' =>				!empty($post['is_not_up_cat']),
 				'is_cdn_photo' =>				!empty($post['is_cdn_photo']),
+				'is_fast_import' =>				!empty($post['is_fast_import']),
 			],
 			// clear progress
 			'module_oasis_progress' => [
@@ -197,6 +199,7 @@ class Oasis extends Controller
 
 			$is_cdn_photo = (!empty($post['is_cdn_photo']) && !empty($post['status'])) ?? 0;
 
+			$this->model_setting_event->editStatusByCode('oasiscatalog_a_m_catalog_product_deleteProduct', !empty($post['status']));
 			$this->model_setting_event->editStatusByCode('oasiscatalog_a_v_catalog_product_form', $is_cdn_photo);
 			$this->model_setting_event->editStatusByCode('oasiscatalog_a_v_catalog_product_list', $is_cdn_photo);
 			$this->model_setting_event->editStatusByCode('oasiscatalog_c_c_product_thumb', $is_cdn_photo);
@@ -205,8 +208,6 @@ class Oasis extends Controller
 			$this->model_setting_event->editStatusByCode('oasiscatalog_c_v_common_cart', $is_cdn_photo);
 			$this->model_setting_event->editStatusByCode('oasiscatalog_c_v_product_compare', $is_cdn_photo);
 			$this->model_setting_event->editStatusByCode('oasiscatalog_c_v_product_product', $is_cdn_photo);
-
-
 
 			$json['success'] = $this->language->get('text_success');
 			$json['redirect'] = $this->url->link(self::ROUTE, 'user_token=' . $this->session->data['user_token'], true);
@@ -255,7 +256,7 @@ class Oasis extends Controller
 	public function getArrayOasisCategories(): array
 	{
 		$result = [];
-		$categories = Api::getCategoriesOasis(['fields' => 'id,parent_id,root,level,slug,name,path']);
+		$categories = Api::getCategoriesOasis();
 
 		foreach ($categories as $category) {
 			if (empty($result[(int)$category->parent_id])) {
@@ -279,6 +280,15 @@ class Oasis extends Controller
 		$this->model_extension_oasiscatalog_module_oasis->install();
 
 		$this->load->model('setting/event');
+
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_a_m_catalog_product_deleteProduct',
+			'description' => 'oasiscatalog hook delete product',
+			'trigger'     => 'admin/model/catalog/product.deleteProduct/after',
+			'action'      => 'extension/oasiscatalog/event/event.catalog_product_deleteProduct',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
 
 		$this->model_setting_event->addEvent([
 			'code'        => 'oasiscatalog_a_v_catalog_product_form',
@@ -352,6 +362,7 @@ class Oasis extends Controller
 	public function uninstall(): void
 	{
 		$this->load->model('setting/event');
+		$this->model_setting_event->deleteEventByCode('oasiscatalog_a_m_catalog_product_deleteProduct');
 		$this->model_setting_event->deleteEventByCode('oasiscatalog_a_v_catalog_product_form');
 		$this->model_setting_event->deleteEventByCode('oasiscatalog_a_v_catalog_product_list');
 		$this->model_setting_event->deleteEventByCode('oasiscatalog_c_c_product_thumb');

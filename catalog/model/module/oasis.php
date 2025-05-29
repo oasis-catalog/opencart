@@ -6,7 +6,7 @@ use Opencart\System\Engine\Model;
 
 class Oasis extends Model
 {
-	public function getImgsCDNFromID(int $product_id): array
+	public function getImgsCDN(int $product_id): array
 	{
 		$query = $this->db->query("
 			SELECT img.* FROM `" . DB_PREFIX . "oasis_cdn_images` as img

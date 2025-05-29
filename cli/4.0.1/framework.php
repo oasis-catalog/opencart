@@ -176,7 +176,7 @@ foreach ($config->get('action_pre_action') as $pre_action) {
 // Access CLI
 $params = [
 	'short' => 'k:u',
-	'long'  => ['key:', 'site:', 'up', 'debug', 'debug_log'],
+	'long'  => ['key:', 'oid:', 'up', 'up_image', 'add_image', 'debug', 'debug_log'],
 ];
 
 // Default values
@@ -189,18 +189,17 @@ if (isset($options['key']) || isset($options['k'])) {
 	$errors = 'key required';
 }
 
-$cron_up = false;
-if (isset($options['up']) || isset($options['u'])) {
-	$cron_up = true;
-}
-
 if ($errors) {
 	$help = "
 usage: php /path/to/site/cli/cli.php [-k|--key=secret] [-u|--up]
 
 Options:
-		-k  --key      substitute your secret key from the Oasis module
-		-u  --up       specify this key to use the update
+-k  --key      substitute your secret key from the Oasis module
+-u  --up       specify this key to use the update
+--add_image    add image if empty
+--up_image     update only image
+--debug        show log
+--debug_log    wrire log to file
 Example import products:
 		php /path/to/site/cli/cli.php --key=secret
 Example update stock (quantity) products:
@@ -211,16 +210,39 @@ Errors: " . $errors . PHP_EOL;
 }
 
 
-require_once(realpath(__DIR__ . '/../../helper/Cli.php'));
-require_once(realpath(__DIR__ . '/../../helper/Api.php'));
-require_once(realpath(__DIR__ . '/../../helper/Main.php'));
-require_once(realpath(__DIR__ . '/../../helper/Config.php'));
+require_once(realpath(__DIR__ . '/../../helper/cli.php'));
+require_once(realpath(__DIR__ . '/../../helper/api.php'));
+require_once(realpath(__DIR__ . '/../../helper/main.php'));
+require_once(realpath(__DIR__ . '/../../helper/config.php'));
+
+if(isset($options['up']) || isset($options['u'])){
+	$cron_opt = [
+		'task' => 'up'
+	];
+}
+else if(isset($options['up_image'])){
+	$cron_opt = [
+		'task' => 'up_image',
+		'oid' => $cliOptions['oid'] ?? ''
+	];
+}
+else if(isset($options['add_image'])){
+	$cron_opt = [
+		'task' => 'add_image',
+		'oid' => $options['oid'] ?? ''
+	];
+}
+else {
+	$cron_opt = [
+		'task' => 'import'
+	];
+}
 
 \Opencart\Admin\Controller\Extension\Oasis\Config::instance($registry, [
 	'debug' => isset($options['debug']),
 	'debug_log' => isset($options['debug_log'])
 ]);
 $cli = new \Opencart\Admin\Controller\Extension\Oasis\Cli($registry);
-$cli->runCron($cron_key, $cron_up);
+$cli->runCron($cron_key, $cron_opt);
 
 die();

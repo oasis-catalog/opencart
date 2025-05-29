@@ -53,6 +53,7 @@ $version = substr($version, 0, 5);
 if ((int)str_replace('.', '', $version) < (int)str_replace('.', '', MIN_VERSION)) {
     die('Для работы скрипта необходима минимальная версия OpenCart ' . MIN_VERSION . ', текущая версия OpenCart ' . $version);
 }
+define('VERSION', $version);
 
 // Startup
 $version = substr($version, 0, 5);

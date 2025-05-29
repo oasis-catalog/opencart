@@ -296,6 +296,16 @@
 										</div>
 									</div>
 								</div>
+								<div class="row mb-3">
+									<label for="input-fast_import" class="col-sm-6 col-form-label">{{ text_fast_import }}</label>
+									<div class="col-sm-6">
+										<div class="form-check form-switch form-switch-lg">
+											<input type="hidden" name="is_fast_import" value="0"/>
+											<input type="checkbox" name="is_fast_import" value="1" id="input-fast_import"
+												   class="form-check-input"{% if is_fast_import %} checked{% endif %}/>
+										</div>
+									</div>
+								</div>
 							</div>
 							<div class="col-sm-6">
 								<div class="row mb-3">

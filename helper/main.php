@@ -127,28 +127,30 @@ class Main
 
 		$productImages = $this->registry->model_catalog_product->getImages(intval($product_info['product_id']));
 
-		if (self::$cf->is_up_photo || $this->checkImages($product_oasis->images, $productImages) === false) {
-			$this->deleteImgInProduct($productImages);
-			$data['product_image'] = $this->prepareImagesProduct($product_oasis->images, end($data['product_category']));
+		if (!self::$cf->is_fast_import) {
+			if (self::$cf->is_up_photo || $this->checkImages($product_oasis->images, $productImages) === false) {
+				$this->deleteImgInProduct($productImages);
+				$data['product_image'] = $this->prepareImagesProduct($product_oasis->images, end($data['product_category']));
 
-			if (!empty($data['product_image'])) {
-				$data['image'] = $data['product_image'][0]['image'];
-			}
-			else{
-				$data['image'] = 'placeholder.png';
-			}
-		} else {
-			$data['product_image'] = [];
+				if (!empty($data['product_image'])) {
+					$data['image'] = $data['product_image'][0]['image'];
+				}
+				else{
+					$data['image'] = '';
+				}
+			} else {
+				$data['product_image'] = [];
 
-			foreach ($productImages as $key => $value) {
-				$data['product_image'][$key] = [
-					'image'      => $value['image'],
-					'sort_order' => $value['sort_order'],
-				];
+				foreach ($productImages as $key => $value) {
+					$data['product_image'][$key] = [
+						'image'      => $value['image'],
+						'sort_order' => $value['sort_order'],
+					];
+				}
+				unset($key, $value);
 			}
-			unset($key, $value);
+			$this->updateImageCDN($product_oasis);
 		}
-		$this->updateImageCDN($product_oasis);
 
 		$product_data = $this->registry->model_extension_oasiscatalog_module_oasis->getOasisProduct($product_oasis->group_id);
 		if ($product_data) {
@@ -198,13 +200,15 @@ class Main
 			$data['manufacturer_id'] = $this->addBrand($product->brand_id);
 		}
 
-		$data['product_image'] = $this->prepareImagesProduct($product->images, end($data['product_category']));
+		if (!self::$cf->is_fast_import) {
+			$data['product_image'] = $this->prepareImagesProduct($product->images, end($data['product_category']));
 
-		if (!empty($data['product_image'])) {
-			$data['image'] = $data['product_image'][0]['image'];
-		}
-		else{
-			$data['image'] = '';
+			if (!empty($data['product_image'])) {
+				$data['image'] = $data['product_image'][0]['image'];
+			}
+			else{
+				$data['image'] = '';
+			}
 		}
 
 		$product_id = $this->registry->model_catalog_product->addProduct($this->setProduct($data, $product));
@@ -220,7 +224,10 @@ class Main
 			'product_id'       => $product_id,
 		];
 		$this->registry->model_extension_oasiscatalog_module_oasis->addOasisProduct($args);
-		$this->updateImageCDN($product);
+
+		if(!self::$cf->is_fast_import) {
+			$this->updateImageCDN($product);
+		}
 
 		return $product_id;
 	}
@@ -1096,13 +1103,13 @@ class Main
 	}
 
 
-	public function updateImageCDN($product_oasis): void
+	public function updateImageCDN($product_oasis, $is_need = false): void
 	{
 		if(self::$cf->is_cdn_photo){
-			$cdn_db_images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDNFromOID($product_oasis->id);
-
-			$is_update = self::$cf->is_up_photo;
+			$is_update = $is_need ?? self::$cf->is_up_photo;
 			if (!$is_update){
+				$cdn_db_images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDNFromOID($product_oasis->id);
+
 				if(count($cdn_db_images) != count($product_oasis->images)){
 					$is_update = true;
 				}
@@ -1311,39 +1318,5 @@ class Main
 		$str_trans = strtr($str, $arr_trans);
 
 		return strtolower($str_trans);
-	}
-
-	/**
-	 * Get ids product by group_id
-	 *
-	 * @param string $groupId
-	 *
-	 * @return void
-	 */
-	#[NoReturn] public static function getIdsByGroupId(string $groupId): void
-	{
-		$oasisCategories = Api::getCategoriesOasis(['fields' => 'id']);
-		$ids = [];
-
-		foreach ($oasisCategories as $oasisCategory) {
-			$ids[] = $oasisCategory->id;
-		}
-
-		$args = [
-			'fields'   => 'id,group_id',
-			'category' => implode(',', $ids)
-		];
-
-		$products = Api::getProductsOasis($args);
-		$result = [];
-
-		foreach ($products as $product) {
-			if ($product->group_id == $groupId) {
-				$result[] = $product->id;
-			}
-		}
-
-		print_r('$args[\'ids\'] = \'' . implode(',', $result) . '\';');
-		exit();
 	}
 }

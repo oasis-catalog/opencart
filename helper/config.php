@@ -3,6 +3,7 @@ namespace Opencart\Admin\Controller\Extension\Oasis;
 
 use Opencart\Admin\Controller\Extension\Oasis\Main;
 use Opencart\Admin\Controller\Extension\Oasis\Api;
+use Opencart\Admin\Controller\Extension\Oasis\Cli;
 
 use \Opencart\System\Engine\Registry;
 
@@ -61,7 +62,7 @@ class Config {
 	public bool $is_delete_exclude;
 	public bool $is_cdn_photo;
 	public bool $is_cdn_available;
-
+	public bool $is_fast_import;
 
 	private bool $is_init_rel = false;
 
@@ -74,6 +75,16 @@ class Config {
 				throw new Exception('Opencart Registry empty');
 			}
 			self::$instance = new self($registry, $opt);
+		} else {
+			if(!empty($opt['init'])){
+				self::$instance->init();
+			}
+			if(!empty($opt['init_rel'])){
+				self::$instance->initRelation();
+			}
+			if(!empty($opt['load_currencies'])){
+				self::$instance->loadCurrencies();
+			}
 		}
 
 		return self::$instance;
@@ -81,14 +92,14 @@ class Config {
 
 	public function __construct(Registry $registry, $opt = []) {
 		$this->registry = $registry;
-
 		$this->upload_path = DIR_STORAGE . 'wp-oasis-importer';
 
 		$this->is_debug = !empty($opt['debug']);
 		$this->is_debug_log = !empty($opt['debug_log']);
 
-		Main::$cf = $this;
 		Api::$cf = $this;
+		Main::$cf = $this;
+		Cli::$cf = $this;
 
 		if(!empty($opt['init'])){
 			$this->init();
@@ -169,7 +180,8 @@ class Config {
 		$this->is_up_photo =			!empty($opt['is_up_photo']);
 		$this->is_delete_exclude =		!empty($opt['is_delete_exclude']);
 		$this->is_cdn_photo =			!empty($opt['is_cdn_photo']);
-
+		$this->is_fast_import =			!empty($opt['is_fast_import']);
+		
 		$version = (int)implode('', array_slice(explode('.', VERSION), 0, 3));
 		$this->is_cdn_available = $version >= 410;
 	}
@@ -219,25 +231,38 @@ class Config {
 		$dt = (new \DateTime())->format('d.m.Y H:i:s');
 		$this->progress['date_step'] = $dt;
 
-		if($this->limit > 0){
+		$is_full_import = false;
+		if ($this->limit > 0) {
 			$this->progress['item'] += $this->progress['step_item'];
 
 			if(($this->limit * ($this->progress['step'] + 1)) > $this->progress['total']){
 				$this->progress['step'] = 0;
-				$this->progress['item'] = 0;
-				$this->progress['date'] = $dt;
+				$is_full_import = true;
 			}
 			else{
 				$this->progress['step']++;
 			}
 		}
-		else{
-			$this->progress['date'] = $dt;
-			$this->progress['item'] = 0;
+		else {
+			$is_full_import = true;
 		}
 
 		$this->progress['step_item'] = 0;
 		$this->progress['step_total'] = 0;
+
+		if($is_full_import) {
+			$this->progress['item'] = 0;
+			$this->progress['date'] = $dt;
+
+			if($this->is_fast_import) {
+				$this->is_fast_import = false;
+
+				$attr = $this->registry->model_setting_setting->getSetting('module_oasis') ?? [];
+				$opt = $attr['module_oasis_opt'] ?? [];
+				$opt['is_fast_import'] = false;
+				$this->registry->model_setting_setting->editValue('module_oasis', 'module_oasis_opt', $opt);
+			}
+		}
 
 		$this->updateSettingProgress();
 	}

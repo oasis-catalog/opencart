@@ -15,7 +15,7 @@ class Event extends \Opencart\System\Engine\Controller
 		$this->load->model(self::ROUTE);
 
 		foreach($data as $key => $item){
-			$images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDNFromID($item['product_id']);
+			$images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDN($item['product_id']);
 			if(!empty($images)){
 				$main_img = array_filter($images, fn($n) => $n['main'])[0] ?? $images[0];
 				$data[$key]['thumb'] = $main_img['url_superbig'];
@@ -32,7 +32,7 @@ class Event extends \Opencart\System\Engine\Controller
 	public function product_product(&$route = false, &$data = array()) {
 		$this->load->model(self::ROUTE);
 
-		$images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDNFromID($data['product_id']);
+		$images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDN($data['product_id']);
 		if(!empty($images)){
 			$main_img = array_filter($images, fn($n) => $n['main'])[0] ?? $images[0];
 
@@ -59,7 +59,7 @@ class Event extends \Opencart\System\Engine\Controller
 		$this->load->model(self::ROUTE);
 
 		foreach($data['products'] as $key => $item){
-			$images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDNFromID($item['product_id']);
+			$images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDN($item['product_id']);
 			if(!empty($images)){
 				$main_img = array_filter($images, fn($n) => $n['main'])[0] ?? $images[0];
 				$data['products'][$key]['thumb'] = $main_img['url_thumbnail'];
@@ -77,7 +77,7 @@ class Event extends \Opencart\System\Engine\Controller
 		$this->load->model(self::ROUTE);
 
 		foreach($data['products'] as $key => $item){
-			$images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDNFromID($item['product_id']);
+			$images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDN($item['product_id']);
 			if(!empty($images)){
 				$main_img = array_filter($images, fn($n) => $n['main'])[0] ?? $images[0];
 				$data['products'][$key]['thumb'] = $main_img['url_thumbnail'];
@@ -95,7 +95,7 @@ class Event extends \Opencart\System\Engine\Controller
 		$this->load->model(self::ROUTE);
 
 		foreach($data['products'] as $key => $item){
-			$images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDNFromID($item['product_id']);
+			$images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDN($item['product_id']);
 			if(!empty($images)){
 				$main_img = array_filter($images, fn($n) => $n['main'])[0] ?? $images[0];
 				$data['products'][$key]['thumb'] = $main_img['url_thumbnail'];
@@ -113,7 +113,7 @@ class Event extends \Opencart\System\Engine\Controller
 		$this->load->model(self::ROUTE);
 
 		foreach($data['products'] as $key => $item){
-			$images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDNFromID($item['product_id']);
+			$images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDN($item['product_id']);
 			if(!empty($images)){
 				$main_img = array_filter($images, fn($n) => $n['main'])[0] ?? $images[0];
 				$data['products'][$key]['thumb'] = $main_img['url_thumbnail'];
