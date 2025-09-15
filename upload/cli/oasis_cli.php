@@ -49,16 +49,21 @@ if (!isset($matches[1])) {
 }
 
 $version = substr($version, 0, 7);
-
-if ((int)str_replace('.', '', $version) < (int)str_replace('.', '', MIN_VERSION)) {
+if (version_compare($version, MIN_VERSION) < 0) {
 	die('Для работы скрипта необходима минимальная версия OpenCart ' . MIN_VERSION . ', текущая версия OpenCart ' . $version);
 }
 
 // Startup
 $version = substr($version, 0, 5);
-if (file_exists($root_dir . '/cli/' . $version . '/oasis_cli_framework.php')) {
-	require_once($root_dir . '/cli/' . $version . '/oasis_cli_framework.php');
-} else {
-	die("ERROR: cli error startup oasis_cli_framework");
+$version_supported = [
+	'3.0.3' => '3.0.3',
+	'3.0.4' => '3.0.3',
+];
+
+if(empty($version_supported[$version])) {
+	die("ERROR: cli error start	up framework");
+}
+else {
+	require_once($root_dir . '/cli/' . $version_supported[$version] . '/oasis_cli_framework.php');
 }
 ?>
