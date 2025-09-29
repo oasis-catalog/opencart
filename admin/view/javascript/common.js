@@ -45,74 +45,6 @@ jQuery(function ($) {
 		}
 	});
 
-
-
-
-	setTimeout(upAjaxProgressBar, 10000);
-	function upAjaxProgressBar() {
-		jQuery(function ($) {
-			$.ajax({
-				url: 'index.php?route=extension/oasiscatalog/module/oasis|get_data_progress_bar&user_token=' + user_token,
-				type: 'POST',
-				dataType: 'json',
-				success: function (data) {
-					if (data) {
-						document.getElementById('upAjaxStep').style.width = data.p_step + '%';
-						$('#upAjaxStep').html(data.p_step + '%');
-
-						document.getElementById('upAjaxTotal').style.width = data.p_total + '%';
-						$('#upAjaxTotal').html(data.p_total + '%');
-
-						document.querySelector(".oasis-process-icon").innerHTML = data.progress_icon;
-
-						document.querySelector('.oasis-process-text').innerHTML = data.step_text;
-
-						if (data.is_process) {
-							switchAnimatedBar('progress-bar-striped progress-bar-animated', 'add');
-							setTimeout(upAjaxProgressBar, 5000);
-						} else {
-							switchAnimatedBar('progress-bar-striped progress-bar-animated', 'remove');
-							setTimeout(upAjaxProgressBar, 60000);
-						}
-					} else {
-						switchAnimatedBar('progress-bar-striped progress-bar-animated', 'remove');
-						setTimeout(upAjaxProgressBar, 600000);
-					}
-				}
-			});
-		});
-	}
-
-	function switchAnimatedBar(classStr, method) {
-		let lassArr = classStr.split(' ');
-
-		lassArr.forEach(function (item, index, array) {
-			let upAjaxTotal = document.getElementById('upAjaxTotal');
-
-			if (upAjaxTotal) {
-				if (upAjaxTotal.classList.contains(item) && method === 'remove') {
-					upAjaxTotal.classList.remove(item);
-				} else if (method === 'add') {
-					upAjaxTotal.classList.add(item);
-				}
-			}
-
-			let upAjaxStep = document.getElementById('upAjaxStep');
-
-			if (upAjaxStep) {
-				if (upAjaxStep.classList.contains(item) && method === 'remove') {
-					upAjaxStep.classList.remove(item);
-				} else if (method === 'add') {
-					upAjaxStep.classList.add(item);
-				}
-			}
-		});
-	}
-
-
-
-
-
 	function ModalRelation(cat_rel_id){
 		return new Promise((resolve, reject) => {
 			$.post('index.php?route=extension/oasiscatalog/module/oasis|get_all_categories&user_token=' + user_token, null,
@@ -151,4 +83,36 @@ jQuery(function ($) {
 			});
 		});
 	}
+
+
+	function UpProgressBar() {
+		$.ajax({
+			url: 'index.php?route=extension/oasiscatalog/module/oasis|get_data_progress_bar&user_token=' + user_token,
+			type: 'POST',
+			dataType: 'json',
+			success: function (data) {
+				if (data) {
+					$('#upAjaxStep')
+						.css('width', data.p_step + '%')
+						.html(data.p_step + '%')
+						.toggleClass(['progress-bar-striped', 'progress-bar-animated'], data.is_process);
+
+					$('#upAjaxTotal')
+						.css('width', data.p_total + '%')
+						.html(data.p_total + '%')
+						.toggleClass(['progress-bar-striped', 'progress-bar-animated'], data.is_process);
+
+					$('.oasis-process-icon').html(data.progress_icon);
+					$('.oasis-process-text').html(data.step_text);
+
+					setTimeout(UpProgressBar, data.is_process ? 5000 : 60000);
+				} else {
+					$('#upAjaxStep').removeClass(['progress-bar-striped', 'progress-bar-animated']);
+					$('#upAjaxTotal').removeClass(['progress-bar-striped', 'progress-bar-animated']);
+					setTimeout(UpProgressBar, 600000);
+				}
+			}
+		});
+	}
+	setTimeout(UpProgressBar, 10000);
 });

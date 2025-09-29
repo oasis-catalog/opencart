@@ -160,11 +160,11 @@
 									</div>
 								</div>
 								<div class="row mb-3">
-									<label for="input-price" class="col-sm-6 col-form-label">{{ text_price }}</label>
+									<label class="col-sm-6 col-form-label">{{ text_price }}</label>
 									<div class="col-sm-6">
-										<div class="row mb-3">
+										<div class="row">
 											<div class="col-sm-1">
-												<label for="input-price-from" class="col-form-label">{{ text_price_from }}</label>
+												<label for="input-price-from" class="col-form-label-sm">{{ text_price_from }}</label>
 											</div>
 											<div class="col-sm-5">
 												{% if price_from %}
@@ -177,7 +177,7 @@
 
 											</div>
 											<div class="col-sm-1">
-												<label for="input-price-to" class="col-form-label">{{ text_price_to }}</label>
+												<label for="input-price-to" class="col-form-label-sm">{{ text_price_to }}</label>
 											</div>
 											<div class="col-sm-5">
 												{% if price_to %}
@@ -306,10 +306,25 @@
 										</div>
 									</div>
 								</div>
+								<div class="row mb-3">
+									<label for="input-fast_import" class="col-sm-6 col-form-label">{{ text_branding }}</label>
+									<div class="col-sm-6">
+										<div class="form-check form-switch form-switch-lg">
+											<input type="hidden" name="is_branding" value="0"/>
+											<input type="checkbox" name="is_branding" value="1" id="input-fast_import"
+													data-bs-toggle="collapse" data-bs-target="#collapse-branding_selector"
+													class="form-check-input"{% if is_branding %} checked{% endif %}/>
+										</div>
+										<div class="collapse{% if is_branding %} show{% endif %}" id="collapse-branding_selector">
+											<label for="input-branding_selector" class="col-form-label">{{ text_branding_selector }}</label>
+											<input type="text" name="branding_selector" value="{{ branding_selector }}" placeholder="{{ branding_selector }}" id="input-branding_selector" class="form-control">
+										</div>
+									</div>
+								</div>
 							</div>
 							<div class="col-sm-6">
 								<div class="row mb-3">
-									<label for="input-category" class="col-sm-12 col-form-label input-category">{{ text_select_categories }}</label>
+									<label class="col-sm-12 col-form-label input-category">{{ text_select_categories }}</label>
 									<div class="col-sm-12">
 										<div id="tree" class="oa-tree">
 											<div class="oa-tree-ctrl">

@@ -300,6 +300,19 @@ class Oasis extends Model
 		$this->db->query("UPDATE `" . DB_PREFIX . "product` SET `image` = '" . $this->db->escape((string)$image) . "' WHERE `product_id` = '" . (int)$product_id . "'");
 	}
 
+	public function getOrderBranding(int $order_product_id) {
+		$query = $this->db->query("SELECT * FROM `" . DB_PREFIX . "oasis_branding_order` WHERE `order_product_id` = '" . $order_product_id . "'");
+		$result = $query->row;
+		if (empty($result)) {
+			return null;
+		}
+		else {
+			$result['branding'] = json_decode($result['branding'], true);
+			return $result;
+		}
+	}
+
+
 	public function install(): void
 	{
 		$this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "oasis_order` (
@@ -343,5 +356,41 @@ class Oasis extends Model
 		    REFERENCES `" . DB_PREFIX . "oasis_product`(`id`)
 		    ON DELETE CASCADE
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+		$this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "oasis_branding_cart` (
+		  `id` INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		  `cart_id` INT(11) NOT NULL,
+		  `branding` TEXT NOT NULL,
+		  `label` CHAR(255) NOT NULL,
+		  `price` DECIMAL(15,2),
+		  `price_up` datetime,
+		  FOREIGN KEY (`cart_id`)
+		    REFERENCES `" . DB_PREFIX . "cart`(`cart_id`)
+		    ON DELETE CASCADE
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+
+		$this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "oasis_branding_order` (
+		  `id` INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		  `order_product_id` INT(11) NOT NULL,
+		  `label` CHAR(255) NOT NULL,
+		  `branding` TEXT NOT NULL,
+		  FOREIGN KEY (`order_product_id`)
+		    REFERENCES `" . DB_PREFIX . "order_product`(`order_product_id`)
+		    ON DELETE CASCADE
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+	}
+
+	public function uninstall(): void {
+		foreach ([
+			'oasis_order',
+			'oasis_category',
+			'oasis_images',
+			'oasis_product',
+			'oasis_cdn_images',
+			'oasis_branding_cart',
+			'oasis_branding_order',
+		] as $table) {
+			$this->db->query("DROP TABLE IF EXISTS `" . DB_PREFIX . $table . "`");
+		}
 	}
 }

@@ -14,7 +14,7 @@ class Main
 	private Registry $registry;
 
 	public array $cats_oasis = [];
-	public string $var_size = 'Размер';
+	public const ATTRIBUTE_NAME_SIZE = 'Размер';
 
 	public function __construct(Registry $registry)
 	{
@@ -527,7 +527,7 @@ class Main
 
 		foreach ($attributes as $attribute) {
 			$name = $attribute->name;
-			if ($name !== $this->var_size) {
+			if ($name !== self::ATTRIBUTE_NAME_SIZE) {
 				$neededAttribute = [];
 
 				$attributes_store = $this->registry->model_catalog_attribute->getAttributes();
@@ -616,10 +616,12 @@ class Main
 	public function addOption(array $option): int
 	{
 		$languages = $this->registry->model_localisation_language->getLanguages();
-		$data['option_description'] = $this->toLanguagesArr($languages, 'name', (string)$option['name']);
-		$data['type'] = 'radio';
-		$data['sort_order'] = '';
-
+		$data = [
+			'option_description' => $this->toLanguagesArr($languages, 'name', (string)$option['name']),
+			'type'				 => 'radio',
+			'sort_order'		 => '',
+			'validation'		 => ''
+		];
 		foreach ($option['value'] as $item) {
 			$data['option_value'][] = [
 				'option_value_id'          => '',
@@ -628,8 +630,6 @@ class Main
 				'sort_order'               => '',
 			];
 		}
-		unset($item);
-
 		return $this->registry->model_catalog_option->addOption($data);
 	}
 
@@ -640,9 +640,12 @@ class Main
 	 */
 	public function editOption(int $option_id, string $value): void
 	{
-		$data['option_description'] = $this->registry->model_catalog_option->getDescriptions($option_id);
-		$data['type'] = 'radio';
-		$data['sort_order'] = '';
+		$data = [
+			'option_description' => $this->registry->model_catalog_option->getDescriptions($option_id),
+			'type'				 => 'radio',
+			'sort_order'		 => '',
+			'validation'		 => ''
+		];
 		$option_values = $this->registry->model_catalog_option->getValueDescriptions($option_id);
 		$languages = $this->registry->model_localisation_language->getLanguages();
 

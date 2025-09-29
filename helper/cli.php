@@ -4,6 +4,7 @@
 namespace Opencart\Admin\Controller\Extension\Oasis;
 
 use Exception;
+use Opencart\Admin\Controller\Extension\Oasis\Main;
 use Opencart\Admin\Controller\Extension\Oasis\Config as OasisConfig;
 use \Opencart\System\Engine\Registry;
 
@@ -168,8 +169,6 @@ class Cli {
 		}
 	}
 
-	
-
 	/**
 	 * @param object $product
 	 * @param array $args
@@ -187,7 +186,7 @@ class Cli {
 		}
 
 		if (!empty($product->size) && !is_null($product->parent_size_id)) {
-			$option = $this->main->getOption($this->main->var_size, $product->size, intval($product->total_stock));
+			$option = $this->main->getOption(Main::ATTRIBUTE_NAME_SIZE, $product->size, intval($product->total_stock));
 			$data['option'] = $option['option']['name'];
 			$data['product_option'] = $this->main->setOption($option);
 
@@ -354,6 +353,7 @@ class Cli {
 						$this->main->updateImageCDN($product_oasis, true);
 					}
 					else {
+						$this->registry->model_catalog_product->deleteImages($product_id);
 						$this->main->deleteImgInProduct($productImages);
 
 						$product_categorys = $this->registry->model_catalog_product->getCategories($product_id);
@@ -362,16 +362,16 @@ class Cli {
 						$first_image = empty($product_images) ? '' : $product_images[0]['image'];
 						$this->registry->model_extension_oasiscatalog_module_oasis->setProductImage($product_id, $first_image);
 
-						$this->registry->model_catalog_product->deleteImages($product_id);
 						foreach ($product_images as $product_image) {
 							$this->registry->model_catalog_product->addImage($product_id, $product_image);
 						}
 					}
+
+					$this->registry->cache->delete('product');
 				}
 			}
 			self::$cf->log('Done ' . ++$i . ' from ' . $total);
 		}
-		$this->registry->cache->delete('product');
 		self::$cf->log('Окончание обновления картинок');
 	}
 }

@@ -63,6 +63,8 @@ class Config {
 	public bool $is_cdn_photo;
 	public bool $is_cdn_available;
 	public bool $is_fast_import;
+	public bool $is_branding;
+	public string $branding_selector;
 
 	private bool $is_init_rel = false;
 
@@ -181,6 +183,8 @@ class Config {
 		$this->is_delete_exclude =		!empty($opt['is_delete_exclude']);
 		$this->is_cdn_photo =			!empty($opt['is_cdn_photo']);
 		$this->is_fast_import =			!empty($opt['is_fast_import']);
+		$this->is_branding =			!empty($opt['is_branding']);
+		$this->branding_selector =		$opt['branding_selector'] ?? '';
 		
 		$version = (int)implode('', array_slice(explode('.', VERSION), 0, 3));
 		$this->is_cdn_available = $version >= 410;
@@ -408,22 +412,9 @@ class Config {
 				die('Failed to create directories: ' . $this->upload_path);
 			}
 		}
-
-		if(!isset($this->registry->model_setting_setting)){
-			$this->registry->load->model('setting/setting');
-		}
-
-		$this->registry->model_setting_setting->editSetting('module_oasis', [
-			'module_oasis_status' => 0
-		]);
 	}
 
 	public function deactivate() {
-		if(!isset($this->registry->model_setting_setting)){
-			$this->registry->load->model('setting/setting');
-		}
-		$this->registry->model_setting_setting->deleteSetting('module_oasis');
-
 		$this->rmdDir($this->upload_path);
 	}
 
@@ -435,6 +426,8 @@ class Config {
 				unlink($file);
 			}
 		}
-		rmdir($dir);
+		if (is_dir($dir)){
+			rmdir($dir);
+		}
 	}
 }

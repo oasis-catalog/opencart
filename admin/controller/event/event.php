@@ -60,4 +60,32 @@ class Event extends \Opencart\System\Engine\Controller
 			}
 		}
 	}
+
+
+	/* Branding */
+
+	/**
+	 * Event trigger: admin/view/sale/order_info/before
+	 * @param  mixed $route
+	 * @param  mixed $data
+	 * @return void
+	 */
+	public function sale_order_info(&$route, &$data) {
+		$this->load->model(self::ROUTE);
+		$this->load->language(self::ROUTE);
+
+		foreach ($data['order_products'] as $key => $product) {
+			$order_branding = $this->model_extension_oasiscatalog_module_oasis->getOrderBranding($product['order_product_id']);
+			if (!empty($order_branding)) {
+				if(empty($data['order_products'][$key]['option'])) {
+					$data['order_products'][$key]['option'] = [];
+				}
+				$data['order_products'][$key]['option'][] = [
+					'type'	=> 'custom',
+					'name'	=> $this->language->get('text_product_option_branding'),
+					'value' => $order_branding['label'] ?? '-',
+				];
+			}
+		}
+	}
 }

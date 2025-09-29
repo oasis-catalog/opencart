@@ -56,6 +56,8 @@ $_['text_expand_all'] = "Expand all";
 $_['text_not_up_cat'] = "Do not update categories";
 $_['text_import_anytime'] = "Do not limit update";
 $_['text_fast_import'] = "Quick import of products";
+$_['text_branding'] = "Branding widget";
+$_['text_branding_selector'] = "Node selector";
 $_['text_select'] = "Select";
 $_['text_clear'] = "Clear";
 
@@ -81,3 +83,5 @@ $_['error_api_access'] = 'A warning! You do not have an API key, get the API key
 $_['error_api_key'] = 'A warning! Your API key is not valid, get a new API key on the website <a href="https://oasiscatalog.com/" target="_blank">oasiscatalog.com</a> and specify it in the module settings!';
 $_['error_permission'] = 'Warning: You do not have permission to modify!';
 $_['text_mail_to'] = 'For questions about the module, write on our <a href="https://forum.oasiscatalog.com/" target="_blank">forum</a>';
+
+$_['text_product_option_branding'] = 'Branding';

@@ -17,7 +17,7 @@ class Oasis extends Controller
 {
 	private array $error = [];
 	private const ROUTE = 'extension/oasiscatalog/module/oasis';
-	private const VERSION_MODULE = '4.0.9';
+	private const VERSION_MODULE = '4.1.0';
 
 	public function __construct($registry)
 	{
@@ -65,37 +65,44 @@ class Oasis extends Controller
 			'init_rel' => true
 		]);
 
-		$data['status'] = $cf->status;
-		$data['api_key'] = $cf->api_key;
-		$data['api_key_status'] = false;
-		$data['user_id'] = $cf->api_user_id;
-		$data['cron_product'] = 'php ' . realpath(dirname(__FILE__) . '/../../..') . DIRECTORY_SEPARATOR . 'cli' . DIRECTORY_SEPARATOR . 'cli.php --key=' . $cf->getCronKey();
-		$data['cron_stock'] = $data['cron_product'] . ' --up';
-		$data['version'] = self::VERSION_MODULE;
+		$cron_command = 'php ' . realpath(dirname(__FILE__) . '/../../..') . DIRECTORY_SEPARATOR . 'cli' . DIRECTORY_SEPARATOR . 'cli.php --key=' . $cf->getCronKey();
+		$data += [
+			'status'			=> $cf->status,
+			'api_key'			=> $cf->api_key,
+			'api_key_status'	=> false,
+			'user_id'			=> $cf->api_user_id,
+			'cron_product'		=> $cron_command,
+			'cron_stock'		=> $cron_command . ' --up',
+			'version'			=> self::VERSION_MODULE,
+		];
 
 		if ($data['api_key']) {
 			$data['api_key_status'] = $cf->loadCurrencies();
 
 			if ($data['api_key_status']) {
-				$data['tax_class_id'] =			$cf->tax_class_id;
-				$data['is_price_dealer'] =		$cf->is_price_dealer;
-				$data['is_up_photo'] =			$cf->is_up_photo;
-				$data['is_import_anytime'] =	$cf->is_import_anytime;
-				$data['is_not_up_cat'] =		$cf->is_not_up_cat;
-				$data['is_delete_exclude'] =	$cf->is_delete_exclude;
-				$data['is_no_vat'] =			$cf->is_no_vat;
-				$data['is_not_on_order'] =		$cf->is_not_on_order;
-				$data['price_from'] =			$cf->price_from;
-				$data['price_to'] =				$cf->price_to;
-				$data['price_factor'] =			$cf->price_factor;
-				$data['price_increase'] =		$cf->price_increase;
-				$data['rating'] =				$cf->rating;
-				$data['is_wh_moscow'] =			$cf->is_wh_moscow;
-				$data['is_wh_europe'] =			$cf->is_wh_europe;
-				$data['is_wh_remote'] =			$cf->is_wh_remote;
-				$data['is_cdn_photo'] =			$cf->is_cdn_photo;
-				$data['is_cdn_available'] =		$cf->is_cdn_available;
-				$data['is_fast_import'] =		$cf->is_fast_import;
+				$data += [
+					'tax_class_id'			=> $cf->tax_class_id,
+					'is_price_dealer'		=> $cf->is_price_dealer,
+					'is_up_photo'			=> $cf->is_up_photo,
+					'is_import_anytime'		=> $cf->is_import_anytime,
+					'is_not_up_cat'			=> $cf->is_not_up_cat,
+					'is_delete_exclude'		=> $cf->is_delete_exclude,
+					'is_no_vat'				=> $cf->is_no_vat,
+					'is_not_on_order'		=> $cf->is_not_on_order,
+					'price_from'			=> $cf->price_from,
+					'price_to'				=> $cf->price_to,
+					'price_factor'			=> $cf->price_factor,
+					'price_increase'		=> $cf->price_increase,
+					'rating'				=> $cf->rating,
+					'is_wh_moscow'			=> $cf->is_wh_moscow,
+					'is_wh_europe'			=> $cf->is_wh_europe,
+					'is_wh_remote'			=> $cf->is_wh_remote,
+					'is_cdn_photo'			=> $cf->is_cdn_photo,
+					'is_cdn_available'		=> $cf->is_cdn_available,
+					'is_fast_import'		=> $cf->is_fast_import,
+					'is_branding'			=> $cf->is_branding,
+					'branding_selector'		=> $cf->branding_selector,
+				];
 
 				$optBar = $cf->getOptBar();
 
@@ -150,64 +157,84 @@ class Oasis extends Controller
 			$json['error']['api_key'] = $this->language->get('error_api_key');
 		}
 
-		$attr = [
-			'module_oasis_status' =>			!empty($post['status']),
-			'module_oasis_api_key' =>			$post['api_key'] ?? '',
-			'module_oasis_user_id' =>			$post['user_id'] ?? '',
-			'module_oasis_opt' => [
-				'currency' =>					$post['currency'] ?? 'rub',
-				'is_no_vat' =>					!empty($post['is_no_vat']),
-				'is_not_on_order' =>			!empty($post['is_not_on_order']),
-				'is_price_dealer' =>			!empty($post['is_price_dealer']),
-
-				'price_from' =>					$post['price_from'] ?? '',
-				'price_to' =>					$post['price_to'] ?? '',
-				'price_to' =>					$post['price_to'] ?? '',
-				'price_factor' =>				$post['price_factor'] ?? '',
-				'price_increase' =>				$post['price_increase'] ?? '',
-				'rating' =>						$post['rating'] ?? '',
-				'is_wh_moscow' =>				!empty($post['is_wh_moscow']),
-				'is_wh_europe' =>				!empty($post['is_wh_europe']),
-				'is_wh_remote' =>				!empty($post['is_wh_remote']),
-				'categories' =>					$post['categories'] ?? [],
-				'categories_rel' =>				$post['categories_rel'] ?? [],
-				'tax_class_id' =>				$post['tax_class_id'] ?? '',
-				'limit' =>						$post['limit'] ?? '',
-				'is_up_photo' =>				!empty($post['is_up_photo']),
-				'is_delete_exclude' =>			!empty($post['is_delete_exclude']),
-				'is_import_anytime' =>			!empty($post['is_import_anytime']),
-				'is_not_up_cat' =>				!empty($post['is_not_up_cat']),
-				'is_cdn_photo' =>				!empty($post['is_cdn_photo']),
-				'is_fast_import' =>				!empty($post['is_fast_import']),
-			],
-			// clear progress
-			'module_oasis_progress' => [
-				'total' => 0,
-				'step' => 0,
-				'item' => 0,
-				'step_item' => 0,
-				'step_total' => 0,
-			]
-		];
-
 		if (!$json) {
+			$status = !empty($post['status']);
+
+			$attr = [
+				'module_oasis_status'			=> $status,
+				'module_oasis_api_key'			=> $post['api_key'] ?? '',
+				'module_oasis_user_id'			=> $post['user_id'] ?? '',
+				'module_oasis_opt' => [
+					'currency'					=> $post['currency'] ?? 'rub',
+					'is_no_vat'					=> !empty($post['is_no_vat']),
+					'is_not_on_order'			=> !empty($post['is_not_on_order']),
+					'is_price_dealer'			=> !empty($post['is_price_dealer']),
+
+					'price_from'				=> $post['price_from'] ?? '',
+					'price_to'					=> $post['price_to'] ?? '',
+					'price_to'					=> $post['price_to'] ?? '',
+					'price_factor'				=> $post['price_factor'] ?? '',
+					'price_increase'			=> $post['price_increase'] ?? '',
+					'rating'					=> $post['rating'] ?? '',
+					'is_wh_moscow'				=> !empty($post['is_wh_moscow']),
+					'is_wh_europe'				=> !empty($post['is_wh_europe']),
+					'is_wh_remote'				=> !empty($post['is_wh_remote']),
+					'categories'				=> $post['categories'] ?? [],
+					'categories_rel'			=> $post['categories_rel'] ?? [],
+					'tax_class_id'				=> $post['tax_class_id'] ?? '',
+					'limit'						=> $post['limit'] ?? '',
+					'is_up_photo'				=> !empty($post['is_up_photo']),
+					'is_delete_exclude'			=> !empty($post['is_delete_exclude']),
+					'is_import_anytime'			=> !empty($post['is_import_anytime']),
+					'is_not_up_cat'				=> !empty($post['is_not_up_cat']),
+					'is_cdn_photo'				=> !empty($post['is_cdn_photo']),
+					'is_fast_import'			=> !empty($post['is_fast_import']),
+					'is_branding'				=> !empty($post['is_branding']),
+					'branding_selector'			=> $post['branding_selector'] ?? '',
+				],
+				// clear progress
+				'module_oasis_progress' => [
+					'total' => 0,
+					'step' => 0,
+					'item' => 0,
+					'step_item' => 0,
+					'step_total' => 0,
+				]
+			];
+
 			$this->load->model('setting/setting');
 			$this->model_setting_setting->editSetting('module_oasis', $attr);
+			$this->model_setting_setting->editSetting('total_oasis_branding', [
+				'total_oasis_branding_status' 		=> !empty($post['is_branding']),
+				'total_oasis_branding_sort_order'	=> 8,
+			]);
 			$this->cache->delete('oasiscatalog');
 
 			$this->load->model('setting/event');
 
-			$is_cdn_photo = (!empty($post['is_cdn_photo']) && !empty($post['status'])) ?? 0;
+			$is_cdn_photo	= (!empty($post['is_cdn_photo']) && $status) ?? 0;
+			$is_branding 	= (!empty($post['is_branding']) && $status) ?? 0;
 
-			$this->model_setting_event->editStatusByCode('oasiscatalog_a_m_catalog_product_deleteProduct', !empty($post['status']));
-			$this->model_setting_event->editStatusByCode('oasiscatalog_a_v_catalog_product_form', $is_cdn_photo);
-			$this->model_setting_event->editStatusByCode('oasiscatalog_a_v_catalog_product_list', $is_cdn_photo);
-			$this->model_setting_event->editStatusByCode('oasiscatalog_c_c_product_thumb', $is_cdn_photo);
-			$this->model_setting_event->editStatusByCode('oasiscatalog_c_v_account_wishlist_list', $is_cdn_photo);
-			$this->model_setting_event->editStatusByCode('oasiscatalog_c_v_checkout_cart_list', $is_cdn_photo);
-			$this->model_setting_event->editStatusByCode('oasiscatalog_c_v_common_cart', $is_cdn_photo);
-			$this->model_setting_event->editStatusByCode('oasiscatalog_c_v_product_compare', $is_cdn_photo);
-			$this->model_setting_event->editStatusByCode('oasiscatalog_c_v_product_product', $is_cdn_photo);
+			foreach ([
+				'oasiscatalog_a_m_catalog_product_deleteProduct'	=> $status,
+				'oasiscatalog_a_v_catalog_product_form'				=> $is_cdn_photo,
+				'oasiscatalog_a_v_catalog_product_list'				=> $is_cdn_photo,
+				'oasiscatalog_c_c_product_thumb'					=> $is_cdn_photo,
+				'oasiscatalog_c_v_account_wishlist_list'			=> $is_cdn_photo,
+				'oasiscatalog_c_v_checkout_cart_list'				=> $is_cdn_photo,
+				'oasiscatalog_c_v_common_cart'						=> $is_cdn_photo,
+				'oasiscatalog_c_v_product_compare'					=> $is_cdn_photo,
+				'oasiscatalog_c_v_product_product'					=> $is_cdn_photo,
+				'oasiscatalog_a_v_sale_order_info'					=> $is_branding,
+				'oasiscatalog_c_c_product_product'					=> $is_branding,
+				'oasiscatalog_c_v_product_product_after'			=> $is_branding,
+				'oasiscatalog_c_c_checkout_cart_add'				=> $is_branding,
+				'oasiscatalog_c_c_checkout_cart_edit'				=> $is_branding,
+				'oasiscatalog_c_m_checkout_cart_getProducts_after'	=> $is_branding,
+				'oasiscatalog_c_m_checkout_order_add'				=> $is_branding,
+			] as $key => $value) {
+				$this->model_setting_event->editStatusByCode($key, $value);
+			}
 
 			$json['success'] = $this->language->get('text_success');
 			$json['redirect'] = $this->url->link(self::ROUTE, 'user_token=' . $this->session->data['user_token'], true);
@@ -279,6 +306,19 @@ class Oasis extends Controller
 		$this->load->model(self::ROUTE);
 		$this->model_extension_oasiscatalog_module_oasis->install();
 
+		$this->load->model('setting/setting');
+		$this->load->model('setting/extension');
+		
+		$this->model_setting_extension->install('total', 'oasiscatalog', 'oasis_branding');
+		$this->model_setting_setting->editSetting('total_oasis_branding', [
+			'total_oasis_branding_status'		=> 0,
+			'total_oasis_branding_sort_order'	=> 8,
+		]);
+
+		$this->load->model('user/user_group');
+		$this->model_user_user_group->addPermission($this->user->getGroupId(), 'access', 'extension/oasiscatalog/total/oasis_branding');
+		$this->model_user_user_group->addPermission($this->user->getGroupId(), 'modify', 'extension/oasiscatalog/total/oasis_branding');
+
 		$this->load->model('setting/event');
 
 		$this->model_setting_event->addEvent([
@@ -310,7 +350,7 @@ class Oasis extends Controller
 			'code'        => 'oasiscatalog_c_c_product_thumb',
 			'description' => 'oasiscatalog, cdn hook image server',
 			'trigger'     => 'catalog/controller/product/thumb/before',
-			'action'      => 'extension/oasiscatalog/event/event.product_thumb',
+			'action'      => 'extension/oasiscatalog/event/event.controller_product_thumb',
 			'status'      => 0,
 			'sort_order'  => 1
 		]);
@@ -354,6 +394,64 @@ class Oasis extends Controller
 			'status'      => 0,
 			'sort_order'  => 1
 		]);
+
+		/* Branding */
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_a_v_sale_order_info',
+			'description' => 'oasiscatalog, branding hook',
+			'trigger'     => 'admin/view/sale/order_info/before',
+			'action'      => 'extension/oasiscatalog/event/event.sale_order_info',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_c_c_product_product',
+			'description' => 'oasiscatalog, branding hook',
+			'trigger'     => 'catalog/controller/product/product/before',
+			'action'      => 'extension/oasiscatalog/event/event.controller_product_product',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_c_v_product_product_after',
+			'description' => 'oasiscatalog, branding hook',
+			'trigger'     => 'catalog/view/product/product/after',
+			'action'      => 'extension/oasiscatalog/event/event.product_product_after',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_c_c_checkout_cart_add',
+			'description' => 'oasiscatalog, branding hook',
+			'trigger'     => 'catalog/controller/checkout/cart.add/after',
+			'action'      => 'extension/oasiscatalog/event/event.checkout_cart_add_after',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_c_c_checkout_cart_edit',
+			'description' => 'oasiscatalog, branding hook',
+			'trigger'     => 'catalog/controller/checkout/cart.edit/after',
+			'action'      => 'extension/oasiscatalog/event/event.checkout_cart_edit_after',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_c_m_checkout_cart_getProducts_after',
+			'description' => 'oasiscatalog, branding hook',
+			'trigger'     => 'catalog/model/checkout/cart.getProducts/after',
+			'action'      => 'extension/oasiscatalog/event/event.checkout_cart_getProducts_after',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
+		$this->model_setting_event->addEvent([
+			'code'        => 'oasiscatalog_c_m_checkout_order_add',
+			'description' => 'oasiscatalog, branding hook',
+			'trigger'     => 'catalog/model/checkout/order.addOrder/after',
+			'action'      => 'extension/oasiscatalog/event/event.checkout_order_addOrder_after',
+			'status'      => 0,
+			'sort_order'  => 1
+		]);
 	}
 
 	/**
@@ -361,20 +459,41 @@ class Oasis extends Controller
 	 */
 	public function uninstall(): void
 	{
-		$this->load->model('setting/event');
-		$this->model_setting_event->deleteEventByCode('oasiscatalog_a_m_catalog_product_deleteProduct');
-		$this->model_setting_event->deleteEventByCode('oasiscatalog_a_v_catalog_product_form');
-		$this->model_setting_event->deleteEventByCode('oasiscatalog_a_v_catalog_product_list');
-		$this->model_setting_event->deleteEventByCode('oasiscatalog_c_c_product_thumb');
-		$this->model_setting_event->deleteEventByCode('oasiscatalog_c_v_account_wishlist_list');
-		$this->model_setting_event->deleteEventByCode('oasiscatalog_c_v_checkout_cart_list');
-		$this->model_setting_event->deleteEventByCode('oasiscatalog_c_v_common_cart');
-		$this->model_setting_event->deleteEventByCode('oasiscatalog_c_v_product_compare');
-		$this->model_setting_event->deleteEventByCode('oasiscatalog_c_v_product_product');
-
-
-		$cf = OasisConfig::instance($this->registry);
+		$cf = OasisConfig::instance($this->registry, [
+			'init' => true,
+		]);
 		$cf->deactivate();
+
+		$this->load->model('setting/event');
+		foreach ([
+			'oasiscatalog_a_m_catalog_product_deleteProduct',
+			'oasiscatalog_a_v_catalog_product_form',
+			'oasiscatalog_a_v_catalog_product_list',
+			'oasiscatalog_c_c_product_thumb',
+			'oasiscatalog_c_v_account_wishlist_list',
+			'oasiscatalog_c_v_checkout_cart_list',
+			'oasiscatalog_c_v_common_cart',
+			'oasiscatalog_c_v_product_compare',
+			'oasiscatalog_c_v_product_product',
+			'oasiscatalog_a_v_sale_order_info',
+			'oasiscatalog_c_c_product_product',
+			'oasiscatalog_c_v_product_product_after',
+			'oasiscatalog_c_c_checkout_cart_add',
+			'oasiscatalog_c_c_checkout_cart_edit',
+			'oasiscatalog_c_m_checkout_cart_getProducts_after',
+			'oasiscatalog_c_m_checkout_order_add'
+		] as $key) {
+			$this->model_setting_event->deleteEventByCode($key);
+		}
+
+		$this->load->model(self::ROUTE);
+		$this->model_extension_oasiscatalog_module_oasis->uninstall();
+
+		$this->load->model('setting/setting');
+		$this->model_setting_setting->deleteSetting('module_oasis');
+
+		$this->load->model('setting/extension');
+		$this->model_setting_extension->uninstall('total', 'oasis_branding');
 	}
 
 	/**
