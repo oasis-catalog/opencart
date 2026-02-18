@@ -94,7 +94,7 @@ class Config {
 
 	public function __construct(Registry $registry, $opt = []) {
 		$this->registry = $registry;
-		$this->upload_path = DIR_STORAGE . 'wp-oasis-importer';
+		$this->upload_path = DIR_STORAGE . 'oasis-importer';
 
 		$this->is_debug = !empty($opt['debug']);
 		$this->is_debug_log = !empty($opt['debug_log']);
@@ -226,8 +226,8 @@ class Config {
 		$this->updateSettingProgress();
 	}
 
-	public function progressUp() {
-		$this->progress['step_item']++;
+	public function progressUp(int $count = 1) {
+		$this->progress['step_item'] += $count;
 		$this->updateSettingProgress();
 	}
 
@@ -369,13 +369,6 @@ class Config {
 		}
 	}
 
-	public function deleteLogFile() {
-		$filePath = $this->upload_path . '/oasis.log';
-		if (file_exists($filePath)) {
-			unlink($filePath);
-		}
-	}
-
 	public function getRelCategoryId($oasis_cat_id) {
 		if(isset($this->categories_rel[$oasis_cat_id])){
 			return $this->categories_rel[$oasis_cat_id]['id'];
@@ -384,10 +377,6 @@ class Config {
 			return $this->category_rel;
 		}
 		return null;
-	}
-
-	public function getEasyCategories() {
-		
 	}
 
 	public function loadCurrencies(): bool {

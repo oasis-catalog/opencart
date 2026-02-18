@@ -11,10 +11,25 @@ class Event extends \Opencart\System\Engine\Controller
      * @param  mixed $data
      * @return void
      */
-	public function catalog_product_deleteProduct(&$route = false, &$data = array(), &$output) {
-		if($product_id = $data[0]){
+	public function catalog_product_deleteProduct(&$route = false, &$data = array()) {
+		if($productId = $data[0]){
 			$this->load->model(self::ROUTE);
-			$this->registry->model_extension_oasiscatalog_module_oasis->deleteOasisProduct($product_id);
+			$this->load->model('catalog/product');
+
+			$rows = $this->registry->model_extension_oasiscatalog_module_oasis->getOasisProductsForOCID($productId);
+			foreach ($rows as $row) {
+				$this->registry->model_extension_oasiscatalog_module_oasis->deleteOasisProduct($row['product_id_oasis']);
+			}
+			$productImages = $this->registry->model_catalog_product->getImages($productId);
+			foreach ($productImages as $img) {
+				if (!empty($img['image'])) {
+					$ext = pathinfo($img['image']);
+					if (file_exists(DIR_IMAGE . $img['image'])) {
+						unlink(DIR_IMAGE . $img['image']);
+					}
+					$this->registry->model_extension_oasiscatalog_module_oasis->deleteImage($ext['basename']);
+				}
+			}
 		}
 	}
 

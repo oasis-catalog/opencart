@@ -17,7 +17,7 @@ class Oasis extends Controller
 {
 	private array $error = [];
 	private const ROUTE = 'extension/oasiscatalog/module/oasis';
-	private const VERSION_MODULE = '4.1.0';
+	private const VERSION_MODULE = '4.2.0';
 
 	public function __construct($registry)
 	{
@@ -324,7 +324,7 @@ class Oasis extends Controller
 		$this->model_setting_event->addEvent([
 			'code'        => 'oasiscatalog_a_m_catalog_product_deleteProduct',
 			'description' => 'oasiscatalog hook delete product',
-			'trigger'     => 'admin/model/catalog/product.deleteProduct/after',
+			'trigger'     => 'admin/model/catalog/product.deleteProduct/before',
 			'action'      => 'extension/oasiscatalog/event/event.catalog_product_deleteProduct',
 			'status'      => 0,
 			'sort_order'  => 1

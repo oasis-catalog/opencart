@@ -2,7 +2,6 @@
 
 namespace Opencart\Admin\Controller\Extension\Oasis;
 
-use JetBrains\PhpStorm\NoReturn;
 use \Opencart\System\Engine\Registry;
 use Opencart\Admin\Controller\Extension\Oasis\Config as OasisConfig;
 use Exception;
@@ -14,7 +13,16 @@ class Main
 	private Registry $registry;
 
 	public array $cats_oasis = [];
-	public const ATTRIBUTE_NAME_SIZE = 'Размер';
+	public const ATTR_SIZE_NAME = 'Размер';
+
+	public const ATTR_COLOR_ID    = 1000000001; // Цвет товара
+	public const ATTR_MATERIAL_ID = 1000000002; // Материал товара
+	public const ATTR_BRANDING_ID = 1000000008; // Метод нанесения
+	public const ATTR_BARCODE_ID  = 1000000011; // Штрихкод
+	public const ATTR_GENDER_ID   = 65;        	// Пол
+	public const ATTR_FLASH_ID    = 219;        // Объем памяти
+	public const ATTR_MARKING_ID  = 254;        // Обязательная маркировка
+	public const ATTR_REMOTE_ID   = 310;        // Минимальная сумма для удалённого склада
 
 	public function __construct(Registry $registry)
 	{
@@ -22,186 +30,220 @@ class Main
 	}
 
 	/**
-	 * @param array $data
-	 * @param object $product
-	 * @return int
-	 * @throws Exception
+	 * @param object $oasisProduct
+	 * @param array|null $dbProduct
+	 * @param array $productOption
 	 */
-	public function checkProduct(array $data, object $product): int
+	public function checkProduct(object $oasisProduct, ?array $dbProduct = null, array $productOption = [])
 	{
-		$product_oc = $this->registry->model_catalog_product->getProducts(['filter_model' => $product->article]);
+		$productId = empty($dbProduct) ? null : intval($dbProduct['product_id']);
+		$ocProduct = empty($productId) ? [] : $this->registry->model_catalog_product->getProduct($productId);
 
-		if (!$product_oc) {
-			$product_id = $this->addProduct($data, $product);
-			self::$cf->log('OAId='.$product->id.' add OCId=' . $product_id);
+		if (empty($ocProduct)) {
+			$productId = $this->addProduct($oasisProduct, $productOption);
+			self::$cf->log('add    OAId=' . $oasisProduct->id . ', OCId=' . $productId);
 		} else {
-			$this->editProduct($product_oc[0], $product, $data['product_option'] ?? []);
-			$product_id = intval($product_oc[0]['product_id']);
+			$this->editProduct($oasisProduct, $productOption, $ocProduct, $dbProduct);
+			self::$cf->log('update OAId=' . $oasisProduct->id . ', OCId=' . $productId);
 		}
-
-		return $product_id;
 	}
 
 	/**
 	 * Check and delete product
-	 *
-	 * @param string $product_id_oasis
-	 * @return void
+	 * @param string $oasisProductId
 	 */
-	public function checkDeleteProduct(string $product_id_oasis): void
+	public function deleteProduct(string $oasisProductId)
 	{
-		$product = $this->registry->model_extension_oasiscatalog_module_oasis->getOasisProduct($product_id_oasis);
-
+		$product = $this->registry->model_extension_oasiscatalog_module_oasis->getOasisProduct($oasisProductId);
 		if (!empty($product)) {
-			$this->deleteImgInProduct($this->registry->model_catalog_product->getImages(intval($product['product_id'])));
+			$this->deleteImages($this->registry->model_catalog_product->getImages(intval($product['product_id'])));
 			$this->registry->model_catalog_product->deleteProduct(intval($product['product_id']));
-			$this->registry->db->query("DELETE FROM `" . DB_PREFIX . "oasis_product` WHERE product_id_oasis = '" . $this->registry->db->escape($product_id_oasis) . "'");
-			self::$cf->log('OAId='.$product_id_oasis.' delete OCId=' . $product['product_id']);
 		}
+		$this->registry->model_extension_oasiscatalog_module_oasis->deleteOasisProduct($oasisProductId);
+		self::$cf->log('OAId=' . $oasisProductId . ' delete OCId=' . (!empty($product) ? $product['product_id'] : '-'));
 	}
 
 	/**
-	 * @param array $product_info
-	 * @param object $product_oasis
-	 * @param array $product_option
-	 * @return bool
-	 * @throws Exception
+	 * @param object $mainOasisProduct
+	 * @param array $oasisProducts
+	 * @return array
 	 */
-	public function editProduct(array $product_info, object $product_oasis, array $product_option = []): bool
+	public function getProductOption(object $mainOasisProduct, array $oasisProducts)
 	{
-		$date_modified = $this->registry->model_extension_oasiscatalog_module_oasis->getOasisProductDateModified($product_oasis->id);
+		$option             = $this->getOption(self::ATTR_SIZE_NAME);
+		$optionId           = intval($option['option_id']);
+		$mainPrice          = $this->getCalculationPrice($mainOasisProduct);
+		$productOptionValue = [];
+		foreach ($oasisProducts as $oasisProduct) {
+			$price    = $this->getCalculationPrice($oasisProduct);
+			$priceOpt = '';
+			$prefix   = '+';
 
-		$data = $product_info;
-		$data['product_option'] = $this->registry->model_catalog_product->getOptions(intval($product_info['product_id']));
-
-		$option_value_id = 0;
-		if ($product_option) {
-			$option_value_id = $product_option[0]['product_option_value'][0]['option_value_id'];
-
-			$price = $this->getCalculationPrice($product_oasis);
-
-			if ($data['model'] == $product_oasis->article) {
-				$data['price'] = $price;
+			if ($mainPrice < $price) {
+				$priceOpt = $price - $mainPrice;
+			} elseif ($mainPrice > $price) {
+				$priceOpt = $mainPrice - $price;
+				$prefix = '-';
 			}
-
-			if ((float)$data['price'] < $price) {
-				$product_option[0]['product_option_value'][0]['price'] = $price - (float)$data['price'];
-			} elseif ((float)$data['price'] > $price) {
-				$product_option[0]['product_option_value'][0]['price'] = (float)$data['price'] - $price;
-				$product_option[0]['product_option_value'][0]['price_prefix'] = '-';
-			}
-			unset($price);
-
-			if ($data['product_option']) {
-				foreach ($data['product_option'][0]['product_option_value'] as $key => $value) {
-					if ($value['option_value_id'] === $product_option[0]['product_option_value'][0]['option_value_id']) {
-						$data['product_option'][0]['product_option_value'][$key]['quantity'] = $product_option[0]['product_option_value'][0]['quantity'];
-					}
-				}
-				unset($key, $value);
-
-				foreach ($data['product_option'][0]['product_option_value'] as $key => $value) {
-					if ($value['option_value_id'] === $product_option[0]['product_option_value'][0]['option_value_id']) {
-						$data['product_option'][0]['product_option_value'][$key] = $product_option[0]['product_option_value'][0];
-					}
-				}
-
-				$key_option = in_array($product_option[0]['product_option_value'][0]['option_value_id'], array_column($data['product_option'][0]['product_option_value'], 'option_value_id'));
-
-				if ($key_option === false) {
-					$data['product_option'][0]['product_option_value'][] = $product_option[0]['product_option_value'][0];
-				}
-				unset($key_option);
-			} else {
-				$data['product_option'] = $product_option;
-			}
+			$productOptionValue[] = [
+				'option_value_id'         => $this->getOptionValueId($optionId, $oasisProduct->size),
+				'product_option_value_id' => '',
+				'quantity'                => intval($oasisProduct->total_stock),
+				'subtract'                => 1,
+				'price_prefix'            => $prefix,
+				'price'                   => $priceOpt,
+				'points_prefix'           => '+',
+				'points'                  => '',
+				'weight_prefix'           => '+',
+				'weight'                  => '',
+				'oasis_opt_data'          => [
+					'id'                => $oasisProduct->id,
+					'updated_at'        => $oasisProduct->updated_at,
+					'images_updated_at' => $oasisProduct->images_updated_at,
+				],
+			];
 		}
 
-		$manufacturer_info = $this->registry->model_catalog_manufacturer->getManufacturer(intval($product_info['manufacturer_id']));
+		return [[
+			'product_option_id'    => '',
+			'option_id'            => $optionId,
+			'name'                 => $option['name'],
+			'type'                 => $option['type'],
+			'required'             => 1,
+			'product_option_value' => $productOptionValue
+		]];
+	}
 
-		if ($manufacturer_info) {
-			$data['manufacturer'] = $manufacturer_info['name'];
+	public function getOption(string $optionName): array
+	{
+		static $options;
+		if (empty($options[$optionName])) {
+			$option = $this->registry->model_catalog_option->getOptions(['filter_name' => $optionName]);
+			if (empty($option)) {
+				$opt = [
+					'name' => $optionName,
+					'value' => [],
+				];
+				$option = $this->registry->model_catalog_option->getOption($this->addOption($opt));
+			}
+			$options[$optionName] = $option[0];
 		}
-		$data['product_category'] = self::$cf->is_not_up_cat ? $this->registry->model_catalog_product->getCategories($product_info['product_id']) :
-															$this->getProductCategories($product_oasis->categories);
+		return $options[$optionName];
+	}
 
-		$productImages = $this->registry->model_catalog_product->getImages(intval($product_info['product_id']));
+	/**
+	 * @param int $optionId
+	 * @param string $value
+	 * @return int
+	 */
+	public function getOptionValueId(int $optionId, string $value): int
+	{
+		static $opt;
+		if (empty($opt[$optionId][$value])) {
+			$optionValues = $this->registry->model_catalog_option->getValues($optionId);
+			$key = array_search($value, array_column($optionValues, 'name'));
+			if ($key === false) {
+				$this->editOption($optionId, $value);
+				$optionValues = $this->registry->model_catalog_option->getValues($optionId);
+				$key = array_search($value, array_column($optionValues, 'name'));
+			}
+			$opt[$optionId][$value] = $optionValues[$key]['option_value_id'];
+		}
+		return $opt[$optionId][$value];
+	}
+
+	/**
+	 * @param object $oasisProduct
+	 * @param array $productOption
+	 * @param array $ocProduct
+	 * @param array $dbProduct
+	 */
+	public function editProduct(object $oasisProduct, array $productOption, array $ocProduct, array $dbProduct)
+	{
+		$productId = intval($dbProduct['product_id']);
+		$data      = $ocProduct;
+
+		$data['product_option']   = $productOption;
+		$data['product_category'] = self::$cf->is_not_up_cat ? $this->registry->model_catalog_product->getCategories($productId) :
+															$this->getProductCategories($oasisProduct->categories);
 
 		if (!self::$cf->is_fast_import) {
-			if (self::$cf->is_up_photo || $this->checkImages($product_oasis->images, $productImages) === false) {
-				$this->deleteImgInProduct($productImages);
-				$data['product_image'] = $this->prepareImagesProduct($product_oasis->images, end($data['product_category']));
+			$productImages = $this->registry->model_catalog_product->getImages($productId);
+			if (self::$cf->is_up_photo || $this->getNeedImagesUp($oasisProduct, $dbProduct)) {
+				$this->deleteImages($productImages);
+				$data['product_image'] = $this->prepareImagesProduct($oasisProduct->images, $data['product_category']);
 
 				if (!empty($data['product_image'])) {
 					$data['image'] = $data['product_image'][0]['image'];
 				}
-				else{
+				else {
 					$data['image'] = '';
 				}
 			} else {
-				$data['product_image'] = [];
-
-				foreach ($productImages as $key => $value) {
-					$data['product_image'][$key] = [
-						'image'      => $value['image'],
-						'sort_order' => $value['sort_order'],
+				$data['product_image'] = array_map(function($img) {
+					return [
+						'image'      => $img['image'],
+						'sort_order' => $img['sort_order'],
 					];
-				}
-				unset($key, $value);
+				}, $productImages);
 			}
-			$this->updateImageCDN($product_oasis);
+			$this->updateImageCDN($oasisProduct);
 		}
 
-		$product_data = $this->registry->model_extension_oasiscatalog_module_oasis->getOasisProduct($product_oasis->group_id);
-		if ($product_data) {
-			$product_related = $this->registry->model_catalog_product->getRelated(intval($product_data['product_id']));
-
-			if ($product_oasis->group_id !== $product_oasis->id && $product_info['product_id'] !== $product_data['product_id']) {
-				$product_related[] = $product_data['product_id'];
+		// todo: group_id может быть не актуален
+		$dbGroupProduct = $this->registry->model_extension_oasiscatalog_module_oasis->getOasisProduct($oasisProduct->group_id);
+		if ($dbGroupProduct) {
+			$product_related = $this->registry->model_catalog_product->getRelated(intval($dbGroupProduct['product_id']));
+			if ($oasisProduct->group_id !== $oasisProduct->id && $productId !== $dbGroupProduct['product_id']) {
+				$product_related[] = $dbGroupProduct['product_id'];
 			}
 			$data['product_related'] = $product_related;
 		}
 
-		$arr_product = $this->setProduct($data, $product_oasis, intval($option_value_id));
-		$this->registry->model_catalog_product->editProduct(intval($product_info['product_id']), $arr_product);
+		$this->registry->model_catalog_product->editProduct($productId, $this->setProduct($oasisProduct, $data));
 
-		if ($product_option) {
-			$product_option_value = $this->registry->model_extension_oasiscatalog_module_oasis->getProductOptionValueId(intval($product_info['product_id']), intval($product_option[0]['product_option_value'][0]['option_value_id']));
+		if (empty($productOption)) {
+			$this->registry->model_extension_oasiscatalog_module_oasis->editOasisProduct($oasisProduct->id, [
+				'option_value_id'   => '',
+				'product_id'        => $productId,
+				'updated_at'        => $oasisProduct->updated_at,
+				'images_updated_at' => self::$cf->is_fast_import ? '' : $oasisProduct->images_updated_at,
+			]);
 		}
+		else {
+			foreach ($productOption as $productOptionItem) {
+				foreach ($productOptionItem['product_option_value'] as $opt) {
+					$optData = $opt['oasis_opt_data'];
 
-		$args = [
-			'rating'          => $product_oasis->rating,
-			'option_value_id' => $product_option_value['product_option_value_id'] ?? '',
-			'product_id'      => $product_info['product_id'],
-		];
-
-		if (empty($date_modified)) {
-			$args['product_id_oasis'] = $product_oasis->id;
-			$this->registry->model_extension_oasiscatalog_module_oasis->addOasisProduct($args);
-		} else {
-			$this->registry->model_extension_oasiscatalog_module_oasis->editOasisProduct($product_oasis->id, $args);
+					$oValueId = $this->registry->model_extension_oasiscatalog_module_oasis->getProductOptionValueId($productId, $opt['option_value_id']);
+					$this->registry->model_extension_oasiscatalog_module_oasis->editOasisProduct($optData['id'], [
+						'option_value_id'   => $oValueId,
+						'product_id'        => $productId,
+						'updated_at'        => $optData['updated_at'],
+						'images_updated_at' => self::$cf->is_fast_import ? '' : $optData['images_updated_at'],
+					]);
+				}
+			}
 		}
-
-		self::$cf->log('OAId='.$product_oasis->id.' updated OCId=' . $product_info['product_id']);
-		return true;
 	}
 
 	/**
-	 * @param array $data
-	 * @param object $product
+	 * @param object $oasisProduct
+	 * @param array $productOption
 	 * @return integer
 	 * @throws Exception
 	 */
-	public function addProduct(array $data, object $product): int
+	public function addProduct(object $oasisProduct, array $productOption): int
 	{
-		$data['product_category'] = $this->getProductCategories($product->categories);
-
-		if (!is_null($product->brand_id)) {
-			$data['manufacturer_id'] = $this->addBrand($product->brand_id);
+		$data = [
+			'product_option'   => $productOption,
+			'product_category' => $this->getProductCategories($oasisProduct->categories),
+		];
+		if (!empty($oasisProduct->brand_id)) {
+			$data['manufacturer_id'] = $this->getBrand($oasisProduct->brand_id);
 		}
-
 		if (!self::$cf->is_fast_import) {
-			$data['product_image'] = $this->prepareImagesProduct($product->images, end($data['product_category']));
+			$data['product_image'] = $this->prepareImagesProduct($oasisProduct->images, $data['product_category']);
 
 			if (!empty($data['product_image'])) {
 				$data['image'] = $data['product_image'][0]['image'];
@@ -211,59 +253,98 @@ class Main
 			}
 		}
 
-		$product_id = $this->registry->model_catalog_product->addProduct($this->setProduct($data, $product));
+		$productId = $this->registry->model_catalog_product->addProduct($this->setProduct($oasisProduct, $data));
 
-		if (!empty($data['product_option'])) {
-			$product_option_value = $this->registry->model_extension_oasiscatalog_module_oasis->getProductOptionValueId($product_id, $data['product_option'][0]['product_option_value'][0]['option_value_id']);
+		if (empty($productOption)) {
+			$this->registry->model_extension_oasiscatalog_module_oasis->addOasisProduct([
+				'option_value_id'   => '',
+				'product_id'        => $productId,
+				'product_id_oasis'  => $oasisProduct->id,
+				'updated_at'        => $oasisProduct->updated_at,
+				'images_updated_at' => self::$cf->is_fast_import ? '' : $oasisProduct->images_updated_at,
+			]);
 		}
+		else {
+			foreach ($productOption as $productOptionItem) {
+				foreach ($productOptionItem['product_option_value'] as $opt) {
+					$optData = $opt['oasis_opt_data'];
 
-		$args = [
-			'product_id_oasis' => $product->id,
-			'rating'           => $product->rating,
-			'option_value_id'  => $product_option_value['product_option_value_id'] ?? '',
-			'product_id'       => $product_id,
-		];
-		$this->registry->model_extension_oasiscatalog_module_oasis->addOasisProduct($args);
-
+					$oValueId = $this->registry->model_extension_oasiscatalog_module_oasis->getProductOptionValueId($productId, $opt['option_value_id']);
+					$this->registry->model_extension_oasiscatalog_module_oasis->addOasisProduct([
+						'option_value_id'   => $oValueId,
+						'product_id'        => $productId,
+						'product_id_oasis'  => $optData['id'],
+						'updated_at'        => $optData['updated_at'],
+						'images_updated_at' => self::$cf->is_fast_import ? '' : $optData['images_updated_at'],
+					]);
+				}
+			}
+		}
 		if(!self::$cf->is_fast_import) {
-			$this->updateImageCDN($product);
+			$this->updateImageCDN($oasisProduct);
 		}
-
-		return $product_id;
+		return $productId;
 	}
 
 	/**
+	 * @param object $oasisProduct
 	 * @param array $data
-	 * @param object $product_o
-	 * @param int $option_value_id
 	 * @return array
-	 * @throws Exception
 	 */
-	public function setProduct(array $data, object $product_o, int $option_value_id = 0): array
+	public function setProduct(object $oasisProduct, array $data): array
 	{
-		$languages = $this->registry->model_localisation_language->getLanguages();
+		$product = [
+			'master_id'           => 0,
+			'price'               => $this->getCalculationPrice($oasisProduct),
+			'model'               => $data['model'] ?? htmlspecialchars($oasisProduct->article, ENT_QUOTES),
+			'product_attribute'   => $this->getAttributes($oasisProduct->attributes, empty($data['product_option'])),
+			'product_store'       => $data['product_store'] ?? $this->getStores(),
+			'image'               => $data['image'] ?? '',
+			'sku'                 => $data['sku'] ?? '',
+			'upc'                 => $data['upc'] ?? '',
+			'ean'                 => $data['ean'] ?? '',
+			'jan'                 => $data['jan'] ?? '',
+			'isbn'                => $data['isbn'] ?? '',
+			'mpn'                 => $data['mpn'] ?? '',
+			'location'            => $data['location'] ?? '',
+			'tax_class_id'        => $data['tax_class_id'] ?? (self::$cf->is_no_vat ? self::$cf->tax_class_id : 0),
+			'minimum'             => $data['minimum'] ?? 1,
+			'subtract'            => $data['subtract'] ?? 1,
+			'stock_status_id'     => $data['stock_status_id'] ?? '0',
+			'shipping'            => $data['shipping'] ?? 1,
+			'date_available'      => $data['date_available'] ?? date('Y-m-d'),
+			'length'              => $data['length'] ?? '',
+			'width'               => $data['width'] ?? '',
+			'height'              => $data['height'] ?? '',
+			'length_class_id'     => $data['length_class_id'] ?? 1,
+			'weight'              => $data['weight'] ?? '',
+			'weight_class_id'     => $data['weight_class_id'] ?? 1,
+			'sort_order'          => $data['sort_order'] ?? 1,
+			'manufacturer_id'     => $data['manufacturer_id'] ?? '0',
+			'category'            => $data['category'] ?? '',
+			'filter'              => $data['filter'] ?? '',
+			'download'            => $data['download'] ?? '',
+			'related'             => $data['related'] ?? '',
+			'points'              => $data['points'] ?? '',
+			'product_reward'      => $data['product_reward'] ?? [1 => ['points' => '']],
+			'product_seo_url'     => $data['product_seo_url'] ?? $this->getSeoUrl($this->getStores(), $this->transliter($oasisProduct->full_name)),
+			'product_layout'      => $data['product_layout'] ?? [0 => ''],
 
-		if (empty($data['model']) || $data['model'] === $product_o->article) {
+		];
+
+		if (isset($data['product_description'])) {
+			$product['product_description'] = $data['product_description'];
+		}
+		else {
+			$name = htmlspecialchars($oasisProduct->full_name, ENT_QUOTES);
+			$desc = nl2br(($oasisProduct->description ?? '') . (empty($oasisProduct->defect) ? '' : ('<p>' . $product->defect . '</p>')));
+			$desc = htmlspecialchars($desc, ENT_QUOTES);
 			$product['product_description'] = [];
-
-			foreach ($languages as $language) {
+			foreach ($this->getLanguages() as $language) {
 				$product['product_description'][$language['language_id']] = [
-					'name'             => htmlspecialchars($product_o->full_name, ENT_QUOTES),
-					'description'      => htmlspecialchars('<p>' . nl2br($product_o->description) . '</p>', ENT_QUOTES),
-					'meta_title'       => htmlspecialchars($product_o->full_name, ENT_QUOTES),
-					'meta_description' => '',
-					'meta_keyword'     => '',
-					'tag'              => '',
-				];
-			}
-			unset($language);
-		} else {
-			$product_description = $this->registry->model_catalog_product->getProduct(intval($data['product_id']));
-			foreach ($languages as $language) {
-				$product['product_description'][$language['language_id']] = [
-					'name'             => $product_description['name'] ?? '',
-					'description'      => $product_description['description'] ?? '',
-					'meta_title'       => $product_description['meta_title'] ?? '',
+					'name'             => $name,
+					'description'      => $desc,
+					'meta_title'       => $name,
 					'meta_description' => '',
 					'meta_keyword'     => '',
 					'tag'              => '',
@@ -271,105 +352,46 @@ class Main
 			}
 		}
 
-		$product['master_id'] = 0;
-		$product['price'] = $this->getCalculationPrice($product_o);
-		$product['model'] = $data['model'] ?? htmlspecialchars($product_o->article, ENT_QUOTES);
-		$product['sku'] = $data['sku'] ?? '';
-		$product['upc'] = $data['upc'] ?? '';
-		$product['ean'] = $data['ean'] ?? '';
-		$product['jan'] = $data['jan'] ?? '';
-		$product['isbn'] = $data['isbn'] ?? '';
-		$product['mpn'] = $data['mpn'] ?? '';
-		$product['location'] = $data['location'] ?? '';
-		$product['tax_class_id'] = $data['tax_class_id'] ?? '0';
-		$product['minimum'] = $data['minimum'] ?? 1;
-		$product['subtract'] = $data['subtract'] ?? 1;
-		$product['stock_status_id'] = $data['stock_status_id'] ?? '0';
-		$product['shipping'] = $data['shipping'] ?? 1;
-		$product['date_available'] = $data['date_available'] ?? date('Y-m-d');
-		$product['length'] = $data['length'] ?? '';
-		$product['width'] = $data['width'] ?? '';
-		$product['height'] = $data['height'] ?? '';
-		$product['length_class_id'] = $data['length_class_id'] ?? 1;
-		$product['weight'] = $data['weight'] ?? '';
-		$product['weight_class_id'] = $data['weight_class_id'] ?? 1;
-		$product['sort_order'] = $data['sort_order'] ?? 1;
-		$product['manufacturer'] = $data['manufacturer'] ?? '';
-		$product['manufacturer_id'] = $data['manufacturer_id'] ?? '0';
-		$product['category'] = $data['category'] ?? '';
-
-		if (isset($data['product_category'])) {
+		if (!empty($data['product_image'])) {
+			$product['product_image'] = $data['product_image'];
+		}
+		if (!empty($data['product_category'])) {
 			$product['product_category'] = $data['product_category'];
 		}
-
-		$product['filter'] = $data['filter'] ?? '';
-		$product['product_store'] = $data['product_store'] ?? $this->getStores();
-		$product['download'] = $data['download'] ?? '';
-		$product['related'] = $data['related'] ?? '';
-
 		if (!empty($data['product_related'])) {
 			$product['product_related'] = $data['product_related'];
 		}
-
-		$product['product_attribute'] = $this->addAttributes($product_o->attributes);
-		$product['option'] = $data['option'] ?? '';
-
 		if (!empty($data['product_option'])) {
 			$product['product_option'] = $data['product_option'];
-			$product['quantity'] = array_sum(array_column($data['product_option'][0]['product_option_value'], 'quantity'));
-		} else {
-			$product['quantity'] = $product_o->total_stock;
-		}
-
-		if ($product_o->rating === 5) {
-			if ($option_value_id) {
-				foreach ($product['product_option'][0]['product_option_value'] as $key => $value) {
-					if ($value['option_value_id'] == $option_value_id) {
-						$product['product_option'][0]['product_option_value'][$key]['quantity'] = 1000000;
-					}
+			$quantity = 0;
+			foreach ($data['product_option'] as $productOptionItem) {
+				foreach ($productOptionItem['product_option_value'] as $opt) {
+					$quantity += ($opt['quantity'] ?? 0);
 				}
 			}
-			$product['quantity'] = 1000000;
-		}
-
-		if ($product['quantity'] > 0 || $product_o->rating === 5) {
-			$product['status'] = 1;
+			$product['quantity'] = $quantity;
 		} else {
-			$product['status'] = 0;
+			$product['quantity'] = $oasisProduct->total_stock;
 		}
-
-		$product['image'] = $data['image'] ?? '';
-
-		if (isset($data['product_image'])) {
-			$product['product_image'] = $data['product_image'];
-		}
-
-		$product['points'] = $data['points'] ?? '';
-		$product['product_reward'] = $data['product_reward'] ?? [1 => ['points' => '']];
-		$product['product_seo_url'] = $data['product_seo_url'] ?? $this->getSeoUrl($this->getStores(), $this->transliter($product_o->full_name));
-		$product['product_layout'] = $data['product_layout'] ?? [0 => ''];
+		$product['status'] = ($product['quantity'] > 0) ? 1 : 0;
 
 		return $product;
 	}
 
 	/**
 	 * Get calculation price product
-	 *
 	 * @param object $product
 	 * @return float
 	 */
-	public function getCalculationPrice(object $product): float
+	public function getCalculationPrice(object $oasisProduct): float
 	{
-		$price = self::$cf->is_price_dealer ? $product->discount_price : $product->price;
-
+		$price = self::$cf->is_price_dealer ? $oasisProduct->discount_price : $oasisProduct->price;
 		if (!empty(self::$cf->price_factor)) {
 			$price = $price * self::$cf->price_factor;
 		}
-
 		if (!empty(self::$cf->price_increase)) {
 			$price = $price + self::$cf->price_increase;
 		}
-
 		return (float)$price;
 	}
 
@@ -395,14 +417,17 @@ class Main
 				}
 			}
 		}
-		return $result;
+		return array_values(array_unique($result));
 	}
 
 	public function getCategoryParents($cat_id): array {
 		$list = [];
 		while($cat_id != 0){
 			$category = $this->registry->model_catalog_category->getCategory($cat_id);
-			$list []= $category;
+			if (empty($category)) {
+				break;
+			}
+			$list[] = $category;
 			$cat_id = $category['parent_id'];
 		}
 		return array_reverse($list);
@@ -410,12 +435,11 @@ class Main
 
 	/**
 	 * Get oasis parents id categories
-	 *
 	 * @param null $cat_id
-	 *
 	 * @return array
 	 */
-	public function getOasisParentsCategoriesId($cat_id): array {
+	public function getOasisParentsCategoriesId($cat_id): array
+	{
 		$result = [];
 		$parent_id = $cat_id;
 
@@ -432,7 +456,8 @@ class Main
 		return $result;
 	}
 
-	public function getCategoryId(int $cat_id): int {
+	public function getCategoryId(int $cat_id): int
+	{
 		$category_id_oc = $this->getIdCategoryByOasisId($cat_id);
 
 		if (!empty($category_id_oc)) {
@@ -447,7 +472,6 @@ class Main
 		if (!$category_id_oc) {
 			$category_id_oc = $this->addCategory($cat_id);
 		}
-
 		return $category_id_oc;
 	}
 
@@ -470,10 +494,8 @@ class Main
 			return $category_id_oc;
 		}
 
-		$languages = $this->registry->model_localisation_language->getLanguages();
 		$data['category_description'] = [];
-
-		foreach ($languages as $language) {
+		foreach ($this->getLanguages() as $language) {
 			$data['category_description'][$language['language_id']] = [
 				'name'             => $category->name,
 				'description'      => '',
@@ -482,7 +504,6 @@ class Main
 				'meta_keyword'     => '',
 			];
 		}
-		unset($language);
 
 		$data['path'] = '';
 		$data['parent_id'] = 0;
@@ -517,21 +538,21 @@ class Main
 
 	/**
 	 * @param array $attributes
+	 * @param bool $isSimpleProduct
 	 * @return array
-	 * @throws Exception
 	 */
-	public function addAttributes(array $attributes): array
+	public function getAttributes(array $attributes, bool $isSimpleProduct): array
 	{
-		$languages = $this->registry->model_localisation_language->getLanguages();
 		$result = [];
+		$attributesStore = $this->registry->model_catalog_attribute->getAttributes();
 
 		foreach ($attributes as $attribute) {
-			$name = $attribute->name;
-			if ($name !== self::ATTRIBUTE_NAME_SIZE) {
-				$neededAttribute = [];
-
-				$attributes_store = $this->registry->model_catalog_attribute->getAttributes();
-				$neededAttribute = array_filter($attributes_store, function ($e) use ($name) {
+			if (in_array($attribute->id ?? null, [self::ATTR_BARCODE_ID, self::ATTR_MARKING_ID, self::ATTR_REMOTE_ID])) {
+				continue;
+			}
+			$name = $attribute->name ?? '';
+			if ($isSimpleProduct || $name !== self::ATTR_SIZE_NAME) {
+				$neededAttribute = array_filter($attributesStore, function ($e) use ($name) {
 					return $e['name'] == $name;
 				});
 
@@ -544,68 +565,59 @@ class Main
 						foreach ($result[$key_attr]['product_attribute_description'] as $key => $value) {
 							$result[$key_attr]['product_attribute_description'][$key]['text'] .= ', ' . $attribute->value;
 						}
-						unset($key, $value);
 					} else {
 						$result[] = [
 							'name'                          => $attr['name'],
 							'attribute_id'                  => $attr['attribute_id'],
-							'product_attribute_description' => $this->toLanguagesArr($languages, 'text', (string)$attribute->value),
+							'product_attribute_description' => $this->toLanguagesArr('text', (string)$attribute->value),
 						];
 					}
 				} else {
-					$data_attribute['attribute_description'] = $this->toLanguagesArr($languages, 'name', (string)$attribute->name);
-					$data_attribute['attribute_group_id'] = $this->getAttributeGroupId($languages);
-					$data_attribute['sort_order'] = '';
-
+					$attr = [
+						'sort_order'            => '',
+						'attribute_description' => $this->toLanguagesArr('name', (string)$attribute->name),
+						'attribute_group_id'    => $this->getAttributeGroupId(),
+					];
 					$result[] = [
 						'name'                          => $attribute->name,
-						'attribute_id'                  => $this->registry->model_catalog_attribute->addAttribute($data_attribute),
-						'product_attribute_description' => $this->toLanguagesArr($languages, 'text', (string)$attribute->value),
+						'attribute_id'                  => $this->registry->model_catalog_attribute->addAttribute($attr),
+						'product_attribute_description' => $this->toLanguagesArr('text', (string)$attribute->value),
 					];
+					$attributesStore = $this->registry->model_catalog_attribute->getAttributes();
 				}
-				unset($attr, $key_attr, $data_attribute);
 			}
 		}
-		unset($attribute);
-
 		return $result;
 	}
 
 	/**
 	 * @param string $id
 	 * @return int
-	 * @throws Exception
 	 */
-	public function addBrand(string $id): int
+	public function getBrand(string $id): int
 	{
-		$brand = self::searchObject(Api::getBrandsOasis(), $id);
-
+		static $brandsOasis;
+		if (empty($brandsOasis)) {
+			$brandsOasis = Api::getBrandsOasis();
+		}
+		$brand = self::searchObject($brandsOasis, $id);
 		if (!$brand) {
 			return 0;
 		}
-
-		$manufacture_id_oc = $this->getManufacturerIdByKeyword($brand->slug);
-
-		if ($manufacture_id_oc) {
-			return $manufacture_id_oc;
+		$result = $this->registry->model_extension_oasiscatalog_module_oasis->getSeoUrls([
+			'keyword' => $brand->slug,
+			'key'     => 'manufacturer_id',
+		]);
+		if (!empty($result)) {
+			return intval($result['value']);
 		}
-
-		$data['name'] = $brand->name;
-		$data['manufacturer_store'] = $this->getStores();
-		$data['sort_order'] = '';
-		$data['manufacturer_seo_url'] = $this->getSeoUrl($data['manufacturer_store'], $brand->slug);
-
-		if (!empty($brand->logotype)) {
-			$data_img = [
-				'folder' => 'catalog/oasis/manufacturers',
-				'source' => $brand->logotype,
-			];
-
-			$data['image'] = $this->saveImg($data_img);
-		} else {
-			$data['image'] = '';
-		}
-
+		$data = [
+			'sort_order'           => '',
+			'name'                 => $brand->name,
+			'manufacturer_store'   => $this->getStores(),
+			'manufacturer_seo_url' => $this->getSeoUrl($this->getStores(), $brand->slug),
+			'image'                => empty($brand->logotype) ? '' : $this->saveImg(['source' => $brand->logotype, 'folder' => 'catalog/oasis/manufacturers'])
+		];
 		return $this->registry->model_catalog_manufacturer->addManufacturer($data);
 	}
 
@@ -615,9 +627,8 @@ class Main
 	 */
 	public function addOption(array $option): int
 	{
-		$languages = $this->registry->model_localisation_language->getLanguages();
 		$data = [
-			'option_description' => $this->toLanguagesArr($languages, 'name', (string)$option['name']),
+			'option_description' => $this->toLanguagesArr('name', (string)$option['name']),
 			'type'				 => 'radio',
 			'sort_order'		 => '',
 			'validation'		 => ''
@@ -625,7 +636,7 @@ class Main
 		foreach ($option['value'] as $item) {
 			$data['option_value'][] = [
 				'option_value_id'          => '',
-				'option_value_description' => $this->toLanguagesArr($languages, 'name', (string)$item),
+				'option_value_description' => $this->toLanguagesArr('name', (string)$item),
 				'image'                    => '',
 				'sort_order'               => '',
 			];
@@ -647,11 +658,10 @@ class Main
 			'validation'		 => ''
 		];
 		$option_values = $this->registry->model_catalog_option->getValueDescriptions($option_id);
-		$languages = $this->registry->model_localisation_language->getLanguages();
 
 		$option_values[] = [
 			'option_value_id'          => '',
-			'option_value_description' => $this->toLanguagesArr($languages, 'name', $value),
+			'option_value_description' => $this->toLanguagesArr('name', $value),
 			'image'                    => '',
 			'sort_order'               => '',
 		];
@@ -661,114 +671,27 @@ class Main
 	}
 
 	/**
-	 * @param array $data
-	 * @return array
-	 */
-	public function setOption(array $data): array
-	{
-		$option[0] = [
-			'product_option_id' => '',
-			'name'              => $data['option']['name'],
-			'option_id'         => $data['option']['option_id'],
-			'type'              => $data['option']['type'],
-			'required'          => 1,
-		];
-
-		$option[0]['product_option_value'] = [];
-
-		foreach ($data['values'] as $value) {
-			$option[0]['product_option_value'][] = [
-				'option_value_id'         => $value['option_value_id'],
-				'product_option_value_id' => '',
-				'quantity'                => $value['quantity'],
-				'subtract'                => 1,
-				'price_prefix'            => '+',
-				'price'                   => '',
-				'points_prefix'           => '+',
-				'points'                  => '',
-				'weight_prefix'           => '+',
-				'weight'                  => '',
-			];
-		}
-		unset($value);
-
-		return $option;
-	}
-
-	/**
-	 * @param string $option_name
-	 * @param string $value
-	 * @param int $quantity
-	 * @return array
-	 * @throws Exception
-	 */
-	public function getOption(string $option_name, string $value, int $quantity): array
-	{
-		$data['option'] = $this->registry->model_catalog_option->getOptions(['filter_name' => $option_name]);
-
-		if (!$data['option']) {
-			$opt['name'] = $option_name;
-			$opt['value'][] = $value;
-			$data['option'] = $this->registry->model_catalog_option->getOption($this->addOption($opt));
-		} else {
-			$data['option'] = $data['option'][0];
-		}
-		unset($opt);
-
-		$values = $this->getOptionValue(intval($data['option']['option_id']), $value);
-
-		if (!$values) {
-			$this->editOption(intval($data['option']['option_id']), $value);
-
-			$values = $this->getOptionValue(intval($data['option']['option_id']), $value);
-		}
-
-		$values['quantity'] = $quantity;
-		$data['values'][] = $values;
-
-		return $data;
-	}
-
-	/**
-	 * @param int $option_id
-	 * @param string $needle
-	 * @return array
-	 */
-	public function getOptionValue(int $option_id, string $needle): array
-	{
-		$option_values = $this->registry->model_catalog_option->getValues($option_id);
-		$key = array_search($needle, array_column($option_values, 'name'));
-
-		return $key !== false ? $option_values[$key] : [];
-	}
-
-	/**
-	 * @param array $languages
 	 * @return int
 	 */
-	public function getAttributeGroupId(array $languages): int
+	public function getAttributeGroupId(): int
 	{
-		$attribute_groups = $this->registry->model_catalog_attribute_group->getAttributeGroups();
-		$name = 'Характеристики';
-		$key = array_search($name, array_column($attribute_groups, 'name'));
+		$name  = 'Характеристики';
+		$groups = $this->registry->model_catalog_attribute_group->getAttributeGroups();
+		$key   = array_search($name, array_column($groups, 'name'));
 
 		if ($key !== false) {
-			$attribute_group_id = intval($attribute_groups[$key]['attribute_group_id']);
+			return intval($groups[$key]['attribute_group_id']);
 		} else {
-			$data_attribute_group = [];
-
-			foreach ($languages as $language) {
-				$data_attribute_group['attribute_group_description'][$language['language_id']] = [
+			$group = [
+				'sort_order' => ''
+			];
+			foreach ($this->getLanguages() as $language) {
+				$group['attribute_group_description'][$language['language_id']] = [
 					'name' => $name,
 				];
 			}
-			unset($language);
-
-			$data_attribute_group['sort_order'] = '';
-			$attribute_group_id = $this->registry->model_catalog_attribute_group->addAttributeGroup($data_attribute_group);
+			return $this->registry->model_catalog_attribute_group->addAttributeGroup($group);
 		}
-
-		return $attribute_group_id;
 	}
 
 	/**
@@ -779,44 +702,36 @@ class Main
 	public function getSeoUrl(array $stores, string $slug): array
 	{
 		$data = [];
-		$languages = $this->registry->model_localisation_language->getLanguages();
-
 		foreach ($stores as $store) {
 			$i = 0;
 			$postfix = '';
-			foreach ($languages as $language) {
+			foreach ($this->getLanguages() as $language) {
 				if ($i > 0) {
 					$postfix = '-' . $i;
 				}
 				$data[$store][$language['language_id']] = $slug . $postfix;
 				$i++;
 			}
-			unset($language);
 		}
-		unset($store);
-
 		return $data;
 	}
 
 	/**
 	 * @return array
-	 * @throws Exception
 	 */
 	public function getStores(): array
 	{
-		$data = [];
-		$stores = $this->registry->model_setting_store->getStores();
-
-		if ($stores) {
-			foreach ($stores as $store) {
-				$data[] = $store['store_id'];
+		static $result;
+		if (empty($result)) {
+			if ($stores = $this->registry->model_setting_store->getStores()) {
+				foreach ($stores as $store) {
+					$result[] = $store['store_id'];
+				}
+			} else {
+				$result = [0];
 			}
-			unset($store);
-		} else {
-			$data = [0];
 		}
-
-		return $data;
+		return $result;
 	}
 
 	public function getIdCategoryByOasisId(int $id): int
@@ -827,39 +742,21 @@ class Main
 	}
 
 	/**
-	 * @param string $keyword
-	 * @return integer
-	 */
-	public function getManufacturerIdByKeyword(string $keyword): int
-	{
-		$result = $this->registry->model_extension_oasiscatalog_module_oasis->getSeoUrls([
-			'keyword' => $keyword,
-			'key'     => 'manufacturer_id',
-		]);
-
-		return $result ? intval($result['value']) : 0;
-	}
-
-	/**
-	 * Get oasis main categories - level = 1
-	 *
-	 * @param null $categories
+	 * Get categories level 1
 	 * @return array
 	 */
-	public static function getOasisMainCategories($categories = null): array
+	public static function getOasisMainCategories(): array
 	{
-		$result = [];
-
-		if (!$categories) {
+		static $result;
+		if (empty($result)) {
+			$result = [];
 			$categories = Api::getCategoriesOasis();
-		}
-
-		foreach ($categories as $category) {
-			if ($category->level === 1) {
-				$result[$category->id] = $category->name;
+			foreach ($categories as $category) {
+				if ($category->level === 1) {
+					$result[] = $category->id;
+				}
 			}
 		}
-
 		return $result;
 	}
 
@@ -882,36 +779,43 @@ class Main
 	}
 
 	/**
-	 * @param array $languages
+	 * @return array
+	 */
+	private function getLanguages(): array
+	{
+		static $languages;
+		if (empty($languages)) {
+			$languages = $this->registry->model_localisation_language->getLanguages();
+		}
+		return $languages;
+	}
+
+	/**
 	 * @param string $key
 	 * @param string $value
 	 * @return array
 	 */
-	public function toLanguagesArr(array $languages, string $key, string $value): array
+	public function toLanguagesArr(string $key, string $value): array
 	{
 		$result = [];
-
-		foreach ($languages as $language) {
+		foreach ($this->getLanguages() as $language) {
 			$result[$language['language_id']] = [
 				$key => $value,
 			];
 		}
-		unset($language);
-
 		return $result;
 	}
 
 	/**
 	 * Build tree categories
-	 *
 	 * @param $data
 	 * @param array $checkedArr
 	 * @param array $relCategories
 	 * @param int $parent_id
-	 *
 	 * @return string
 	 */
-	public static function buildTreeCats( $data, array $checkedArr = [], array $relCategories = [], int $parent_id = 0 ): string {
+	public static function buildTreeCats($data, array $checkedArr = [], array $relCategories = [], int $parent_id = 0): string
+	{
 		$treeItem = '';
 		if ( ! empty( $data[ $parent_id ] ) ) {
 			foreach($data[ $parent_id ] as $item){
@@ -964,14 +868,13 @@ class Main
 
 	/**
 	 * Build tree categories
-	 *
 	 * @param $data
 	 * @param int $checked_id
 	 * @param int $parent_id
-	 *
 	 * @return string
 	 */
-	public static function buildTreeRadioCats( $data, ?array $checked_id = null, int $parent_id = 0 ): string {
+	public static function buildTreeRadioCats($data, ?int $checked_id = null, int $parent_id = 0): string
+	{
 		$treeItem = '';
 		if ( ! empty( $data[ $parent_id ] ) ) {
 			foreach($data[ $parent_id ] as $item){
@@ -1008,7 +911,7 @@ class Main
 	 * @param $images
 	 * @return void
 	 */
-	public function deleteImgInProduct($images): void
+	public function deleteImages($images): void
 	{
 		foreach ($images as $image) {
 			$ext = pathinfo($image['image']);
@@ -1021,80 +924,34 @@ class Main
 	}
 
 	/**
-	 * Checking product images for relevance
-	 *
-	 * Usage:
-	 *
-	 * Check is good - true
-	 *
-	 * Check is bad - false
-	 *
-	 * @param $images
-	 * @param $dbProductImages
-	 *
+	 * Check need update product images
+	 * @param $productOasis
+	 * @param $dbProduct
 	 * @return bool
 	 */
-	public function checkImages($images, $dbProductImages): bool
+	public function getNeedImagesUp($productOasis, $dbProduct): bool
 	{
-		if (empty($dbProductImages)) {
-			return false;
-		}
-
-		if (count($images) !== count($dbProductImages)) {
-			return false;
-		}
-
-		$imgNames = [];
-
-		foreach ($dbProductImages as $dbProductImage) {
-			if (!file_exists(DIR_IMAGE . $dbProductImage['image'])) {
-				return false;
-			}
-
-			$extUrl = pathinfo($dbProductImage['image']);
-			$imgNames[] = $extUrl['basename'];
-		}
-
-		$dataDbOaImages = $this->registry->model_extension_oasiscatalog_module_oasis->getImages($imgNames);
-
-		if (empty($dataDbOaImages)) {
-			return false;
-		}
-
-		foreach ($images as $image) {
-			if (empty($image->superbig)) {
-				return false;
-			}
-
-			$keyNeeded = array_search(basename($image->superbig), array_column($dataDbOaImages, 'name'));
-
-			if ($keyNeeded === false || $image->updated_at > intval($dataDbOaImages[$keyNeeded]['date_added'])) {
-				return false;
-			}
-		}
-
-		return true;
+		return empty($dbProduct) || ($productOasis->images_updated_at ?? '1') > ($dbProduct['images_updated_at'] ?? '');
 	}
 
 	/**
 	 * Prepare images for product
 	 *
 	 * @param $images
-	 * @param string $subCatalog
+	 * @param array $categories
 	 * @return array
 	 */
-	public function prepareImagesProduct($images, string $subCatalog = ''): array
+	public function prepareImagesProduct($images, array $categories = []): array
 	{
 		$result = [];
-
 		if(!self::$cf->is_cdn_photo && is_array($images)){
+			$subCatalog = end($categories) ?: '';
 			foreach ($images as $image) {
 				if (isset($image->superbig)) {
 					$data_img = [
 						'folder' => 'catalog/oasis/products/' . $subCatalog,
 						'source' => $image->superbig,
 					];
-
 					$result[] = [
 						'image'      => $this->saveImg($data_img),
 						'sort_order' => '',
@@ -1105,45 +962,25 @@ class Main
 		return $result;
 	}
 
-
-	public function updateImageCDN($product_oasis, $is_need = false): void
+	/**
+	 * Update Image CDN
+	 * @param $productOasis
+	 */
+	public function updateImageCDN($productOasis)
 	{
-		if(self::$cf->is_cdn_photo){
-			$is_update = $is_need ?? self::$cf->is_up_photo;
-			if (!$is_update){
-				$cdn_db_images = $this->registry->model_extension_oasiscatalog_module_oasis->getImgsCDNFromOID($product_oasis->id);
-
-				if(count($cdn_db_images) != count($product_oasis->images)){
-					$is_update = true;
-				}
-				else {
-					foreach($cdn_db_images as $i => $img){
-						if ($cdn_db_images[$i]['updated_at'] < $product_oasis->images[$i]->updated_at) {
-							$is_update = true;
-							break;
-						}
-					}
-				}
+		$this->registry->model_extension_oasiscatalog_module_oasis->delImgsCDNFromOID($productOasis->id);
+		if (self::$cf->is_cdn_photo) {
+			$main = 1;
+			foreach($productOasis->images as $img){
+				$this->registry->model_extension_oasiscatalog_module_oasis->addImgCDNFromOID($productOasis->id, [
+					'main' => $main,
+					'url_superbig' => $img->superbig ?? '',
+					'url_big' => $img->big ?? '',
+					'url_small' => $img->small ?? '',
+					'url_thumbnail' => $img->thumbnail ?? '',
+				]);
+				$main = 0;
 			}
-			if ($is_update){
-				$this->registry->model_extension_oasiscatalog_module_oasis->delImgsCDNFromOID($product_oasis->id);
-
-				$main = 1;
-				foreach($product_oasis->images as $img){
-					$this->registry->model_extension_oasiscatalog_module_oasis->addImgCDNFromOID($product_oasis->id, [
-						'main' => $main,
-						'url_superbig' => $img->superbig ?? '',
-						'url_big' => $img->big ?? '',
-						'url_small' => $img->small ?? '',
-						'url_thumbnail' => $img->thumbnail ?? '',
-						'updated_at' => $img->updated_at ?? 0
-					]);
-					$main = 0;
-				}
-			}
-		}
-		else {
-			$this->registry->model_extension_oasiscatalog_module_oasis->delImgsCDNFromOID($product_oasis->id);
 		}
 	}
 
@@ -1158,7 +995,7 @@ class Main
 		$ext = pathinfo($data['source']);
 
 		if (!array_key_exists('extension', $ext) || $ext['extension'] === 'tif') {
-			return false;
+			return '';
 		}
 
 		$imgDb = $this->registry->model_extension_oasiscatalog_module_oasis->getImage(['name' => $ext['basename']]);
@@ -1311,7 +1148,7 @@ class Main
 			'%'  => '',
 			'`'  => '',
 		];
-		$str = str_replace(['-', '+', '.', '?', '/', '\\', '*', ':', '*', '|'], ' ', $str);
+		$str = str_replace(['-', '+', '.', '?', '/', '\\', '*', ':', '|'], ' ', $str);
 		$str = htmlspecialchars_decode($str);
 		$str = strip_tags($str);
 		$pattern = '/[\w\s\d]+/u';
@@ -1321,5 +1158,36 @@ class Main
 		$str_trans = strtr($str, $arr_trans);
 
 		return strtolower($str_trans);
+	}
+
+	/**
+	 * @param $array
+	 * @param $keys
+	 * @return bool
+	 */
+	public static function arrayKeysExists($array, $keys): bool
+	{
+		foreach ($keys as $key) {
+			if (array_key_exists($key, $array)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Find item
+	 * @param $array
+	 * @param $callback
+	 * @return mixed|null
+	 */
+	public static function findItem(array $array, callable $callback)
+	{
+		foreach ($array as $key => $value) {
+			if ($callback($value, $key)) {
+				return $value;
+			}
+		}
+		return null;
 	}
 }
