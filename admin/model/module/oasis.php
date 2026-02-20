@@ -307,7 +307,7 @@ class Oasis extends Model
 		  `path` char(255) NOT NULL,
 		  `date_added` int unsigned NOT NULL,
 		  PRIMARY KEY (`name`)
-		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci");
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
 		$this->db->query("CREATE TABLE IF NOT EXISTS `" . DB_PREFIX . "oasis_product` (
 		  `id` INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,

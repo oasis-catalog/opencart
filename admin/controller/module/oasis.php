@@ -17,7 +17,7 @@ class Oasis extends Controller
 {
 	private array $error = [];
 	private const ROUTE = 'extension/oasiscatalog/module/oasis';
-	private const VERSION_MODULE = '4.2.0';
+	private const VERSION_MODULE = '4.2.1';
 
 	public function __construct($registry)
 	{
@@ -158,6 +158,10 @@ class Oasis extends Controller
 		}
 
 		if (!$json) {
+			OasisConfig::instance($this->registry, [
+				'init' => true,
+			]);
+
 			$status = !empty($post['status']);
 
 			$attr = [
@@ -179,7 +183,7 @@ class Oasis extends Controller
 					'is_wh_moscow'				=> !empty($post['is_wh_moscow']),
 					'is_wh_europe'				=> !empty($post['is_wh_europe']),
 					'is_wh_remote'				=> !empty($post['is_wh_remote']),
-					'categories'				=> $post['categories'] ?? [],
+					'categories'				=> empty($post['categories']) ? [] : Main::getEasyCategories($post['categories']),
 					'categories_rel'			=> $post['categories_rel'] ?? [],
 					'tax_class_id'				=> $post['tax_class_id'] ?? '',
 					'limit'						=> $post['limit'] ?? '',
@@ -242,37 +246,6 @@ class Oasis extends Controller
 
 		$this->response->addHeader('Content-Type: application/json');
 		$this->response->setOutput(json_encode($json));
-	}
-
-	/**
-	 * Prepare tree categories
-	 *
-	 * @param $data
-	 * @param array $checkeds
-	 * @param string $treeCats
-	 * @param int $parent_id
-	 * @param bool $sw
-	 * @return string
-	 */
-	private static function treeCategories($data, array $checkeds = [], string $treeCats = '', int $parent_id = 0, bool $sw = false): string
-	{
-		if (!empty($data[$parent_id])) {
-			$treeCats .= $sw ? '<ul>' . PHP_EOL : '';
-
-			for ($i = 0; $i < count($data[$parent_id]); $i++) {
-				if (empty($checkeds)) {
-					$checked = ' checked';
-				} else {
-					$checked = array_search($data[$parent_id][$i]['id'], $checkeds) !== false ? ' checked' : '';
-				}
-
-				$treeCats .= '<li><label><input type="checkbox" name="category[]" id="categories" value="' . $data[$parent_id][$i]['id'] . '"' . $checked . '/> ' . $data[$parent_id][$i]['name'] . '</label>' . PHP_EOL;
-				$treeCats = self::treeCategories($data, $checkeds, $treeCats, $data[$parent_id][$i]['id'], true) . '</li>' . PHP_EOL;
-			}
-			$treeCats .= $sw ? '</ul>' . PHP_EOL : '';
-		}
-
-		return $treeCats;
 	}
 
 	/**

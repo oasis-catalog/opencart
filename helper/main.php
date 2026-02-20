@@ -337,7 +337,7 @@ class Main
 		}
 		else {
 			$name = htmlspecialchars($oasisProduct->full_name, ENT_QUOTES);
-			$desc = nl2br(($oasisProduct->description ?? '') . (empty($oasisProduct->defect) ? '' : ('<p>' . $product->defect . '</p>')));
+			$desc = nl2br(($oasisProduct->description ?? '') . (empty($oasisProduct->defect) ? '' : ('<p>' . $oasisProduct->defect . '</p>')));
 			$desc = htmlspecialchars($desc, ENT_QUOTES);
 			$product['product_description'] = [];
 			foreach ($this->getLanguages() as $language) {
@@ -812,14 +812,15 @@ class Main
 	 * @param array $checkedArr
 	 * @param array $relCategories
 	 * @param int $parent_id
+	 * @param bool $parent_checked
 	 * @return string
 	 */
-	public static function buildTreeCats($data, array $checkedArr = [], array $relCategories = [], int $parent_id = 0): string
+	public static function buildTreeCats($data, array $checkedArr = [], array $relCategories = [], int $parent_id = 0, bool $parent_checked = false): string
 	{
 		$treeItem = '';
-		if ( ! empty( $data[ $parent_id ] ) ) {
-			foreach($data[ $parent_id ] as $item){
-				$checked = in_array( $item['id'], $checkedArr ) ? ' checked' : '';
+		if (!empty($data[$parent_id])) {
+			foreach ($data[$parent_id] as $item) {
+				$checked = $parent_checked || in_array($item['id'], $checkedArr);
 
 				$rel_cat = $relCategories[$item['id']] ?? null;
 				$rel_label = '';
@@ -829,14 +830,14 @@ class Main
 					$rel_label = $rel_cat['rel_label'];
 				}
 
-				$treeItemChilds = self::buildTreeCats( $data, $checkedArr, $relCategories, $item['id'] );
+				$treeItemChilds = self::buildTreeCats($data, $checkedArr, $relCategories, $item['id'], $checked);
 
 				if(empty($treeItemChilds)){
 					$treeItem .= '<div class="oa-tree-leaf">
 						<div class="oa-tree-label ' . ($rel_value ? 'relation-active' : '') . '">
 							<input type="hidden" class="oa-tree-inp-rel" name="categories_rel[]" value="' . $rel_value . '" />
 							<label>
-								<input type="checkbox" class="oa-tree-cb-cat" name="categories[]" value="' . $item['id'] . '"' . $checked . '/>
+								<input type="checkbox" class="oa-tree-cb-cat" name="categories[]" value="' . $item['id'] . '"' . ($checked ? ' checked="checked"' : '' ) . '/>
 								<div class="oa-tree-btn-relation"></div>' . $item['name'] . '
 							</label>
 							<div class="oa-tree-dashed"></div>
@@ -851,7 +852,7 @@ class Main
 							<span class="oa-tree-handle-p">+</span>
 							<span class="oa-tree-handle-m">-</span>
 							<label>
-								<input type="checkbox" class="oa-tree-cb-cat" name="categories[]" value="' . $item['id'] . '"' . $checked . '/>
+								<input type="checkbox" class="oa-tree-cb-cat" name="categories[]" value="' . $item['id'] . '"' . ($checked ? ' checked="checked"' : '' ) . '/>
 								<div class="oa-tree-btn-relation"></div>' . $item['name'] . '
 							</label>
 							<div class="oa-tree-dashed"></div>
@@ -862,7 +863,6 @@ class Main
 				}
 			}
 		}
-
 		return $treeItem ?? '';
 	}
 
@@ -1158,6 +1158,46 @@ class Main
 		$str_trans = strtr($str, $arr_trans);
 
 		return strtolower($str_trans);
+	}
+
+	/**
+	 * Filter categories
+	 * @param array categories
+	 * @return array
+	 */
+	public static function getEasyCategories(array $categories): array
+	{
+		$list = [];
+		foreach (Api::getCategoriesOasis() as $cat) {
+			$l = $cat->level;
+			if (empty($list[$l])) {
+				$list[$l] = [];
+			}
+			if (empty($list[$l][$cat->id])) {
+				$list[$l][$cat->id] = [];
+			}
+			if ($cat->parent_id) {
+				if (empty($list[$l][$cat->parent_id])) {
+					$list[$l][$cat->parent_id] = [];
+				}
+				$list[$l][$cat->parent_id][] = $cat->id;
+			}
+		}
+		ksort($list);
+		$list = array_reverse($list);
+		while (true) {
+			foreach ($list as $group) {
+				foreach ($group as $id => $childs) {
+					if (count($childs) > 0 && count(array_diff($childs, $categories)) == 0){
+						$categories = array_diff($categories, $childs);
+						$categories[] = $id;
+						continue 3;
+					}
+				}
+			}
+			break;
+		}
+		return array_values(array_unique($categories));
 	}
 
 	/**
